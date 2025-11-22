@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "128709869165",
+    "project_id": "baseballapp-v2",
+    "storage_bucket": "baseballapp-v2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:128709869165:android:fec91d7abf06a001988964",
+        "android_client_info": {
+          "package_name": "com.baseballteamapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "128709869165-vrbe2mb0qjkvkha517o0j66v259rjbnr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.baseballteamapp",
+            "certificate_hash": "ea0c29fb3f88f755ab4953dfb849bd26c75b52fc"
+          }
+        },
+        {
+          "client_id": "128709869165-no397iekhvjer1sddnthe9k3ccb2i40e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6jcuX5iliPqg5Hmf4XA7JIjLmX5cdt3U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "128709869165-no397iekhvjer1sddnthe9k3ccb2i40e.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "128709869165-oq5lc33vf7co9krrj150rf9j0qrd43ch.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.baseballteamapp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>128709869165-oq5lc33vf7co9krrj150rf9j0qrd43ch.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.128709869165-oq5lc33vf7co9krrj150rf9j0qrd43ch</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>128709869165-vrbe2mb0qjkvkha517o0j66v259rjbnr.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyAF-2sGNdn28a8wppnhWdta6UzwvbZLHxM</string>
+	<key>GCM_SENDER_ID</key>
+	<string>128709869165</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.baseballteamapp</string>
+	<key>PROJECT_ID</key>
+	<string>baseballapp-v2</string>
+	<key>STORAGE_BUCKET</key>
+	<string>baseballapp-v2.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:128709869165:ios:d3b70bb0f1f9948e988964</string>
+</dict>
+</plist>
