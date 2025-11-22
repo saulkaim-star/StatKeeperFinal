@@ -9,28 +9,29 @@ module.exports = function withIosSettings(config) {
       const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
       
       if (fs.existsSync(podfilePath)) {
-        const podfileContent = fs.readFileSync(podfilePath, 'utf-8');
-        
-        // CODIGO FUERZA BRUTA
-        // Inyectamos un bloque al final que busca todos los targets y fuerza C++17
-        // Usamos 'post_install' de nuevo, pero confiamos en que Ruby lo ejecute en orden.
+        let podfileContent = fs.readFileSync(podfilePath, 'utf-8');
+
+        // Codigo de la cura (SIN el bloque 'post_install do', solo lo de adentro)
         const fixCode = `
-# --- FUERZA BRUTA C++17 ---
-post_install do |installer|
-  installer.pods_project.targets.each do |target|
-    target.build_configurations.each do |config|
-      config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
-      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+    # --- FIX INYECTADO CORRECTAMENTE ---
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      end
     end
-  end
-end
-# --------------------------
-`;
+    # -----------------------------------
+        `;
+
+        // Buscamos la funcion clave que ya existe dentro del bloque post_install
+        const anchor = 'react_native_post_install(installer)';
         
-        // Si no tiene el fix, lo pegamos al final del archivo a la fuerza
-        if (!podfileContent.includes('FUERZA BRUTA C++17')) {
-          const newContent = podfileContent + '\n' + fixCode;
-          fs.writeFileSync(podfilePath, newContent);
+        if (podfileContent.includes(anchor)) {
+           // Si aun no tiene nuestro fix, lo pegamos justo despues de esa linea
+           if (!podfileContent.includes('FIX INYECTADO')) {
+             const newContent = podfileContent.replace(anchor, `${anchor}\n${fixCode}`);
+             fs.writeFileSync(podfilePath, newContent);
+           }
         }
       }
       return config;
