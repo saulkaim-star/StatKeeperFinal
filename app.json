@@ -30,7 +30,7 @@
       ]
     },
     "plugins": [
-      "./withIosSettings.js",
+      
       "@react-native-firebase/app",
       [
         "expo-build-properties",
