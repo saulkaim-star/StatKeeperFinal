@@ -6,39 +6,32 @@ module.exports = function withIosSettings(config) {
   return withDangerousMod(config, [
     'ios',
     async (config) => {
-      // Apuntamos directo a la carpeta ios/Podfile
       const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
       
       if (fs.existsSync(podfilePath)) {
         const podfileContent = fs.readFileSync(podfilePath, 'utf-8');
         
-        // El código de la cura C++17
+        // CODIGO FUERZA BRUTA
+        // Inyectamos un bloque al final que busca todos los targets y fuerza C++17
+        // Usamos 'post_install' de nuevo, pero confiamos en que Ruby lo ejecute en orden.
         const fixCode = `
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
-        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-      end
+# --- FUERZA BRUTA C++17 ---
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
     end
-        `;
-
-        // Buscamos la línea exacta donde termina la configuración de React Native
-        // Esta línea SIEMPRE existe en Expo 51.
-        const anchor = 'react_native_post_install(installer)';
-
-        if (podfileContent.includes(anchor)) {
-          // Si ya tiene el fix, no lo ponemos otra vez
-          if (!podfileContent.includes('CLANG_CXX_LANGUAGE_STANDARD')) {
-             // Reemplazamos la línea por: La línea + Nuestro Código
-             const newContent = podfileContent.replace(anchor, `${anchor}\n${fixCode}`);
-             fs.writeFileSync(podfilePath, newContent);
-             console.log("✅ PARCHE C++17 APLICADO CON ÉXITO");
-          }
-        } else {
-          console.error("⚠️ NO SE ENCONTRÓ EL ANCLA EN EL PODFILE");
+  end
+end
+# --------------------------
+`;
+        
+        // Si no tiene el fix, lo pegamos al final del archivo a la fuerza
+        if (!podfileContent.includes('FUERZA BRUTA C++17')) {
+          const newContent = podfileContent + '\n' + fixCode;
+          fs.writeFileSync(podfilePath, newContent);
         }
-      } else {
-        console.error("⚠️ NO SE ENCONTRÓ EL ARCHIVO PODFILE en: " + podfilePath);
       }
       return config;
     },
