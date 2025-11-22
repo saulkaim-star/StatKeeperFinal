@@ -6,12 +6,13 @@ module.exports = function withIosSettings(config) {
   return withDangerousMod(config, [
     'ios',
     async (config) => {
+      // Apuntamos directo a la carpeta ios/Podfile
       const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
       
       if (fs.existsSync(podfilePath)) {
-        let podfileContent = fs.readFileSync(podfilePath, 'utf-8');
-
-        // Bloque de código que fuerza C++17
+        const podfileContent = fs.readFileSync(podfilePath, 'utf-8');
+        
+        // El código de la cura C++17
         const fixCode = `
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
@@ -21,14 +22,23 @@ module.exports = function withIosSettings(config) {
     end
         `;
 
-        // Buscamos el lugar exacto usando Regex (flexible con espacios)
-        const regex = /post_install\s*do\s*\|installer\|/;
-        
-        if (regex.test(podfileContent) && !podfileContent.includes('CLANG_CXX_LANGUAGE_STANDARD')) {
-          // Pegamos la cura
-          podfileContent = podfileContent.replace(regex, (match) => `${match}\n${fixCode}`);
-          fs.writeFileSync(podfilePath, podfileContent);
+        // Buscamos la línea exacta donde termina la configuración de React Native
+        // Esta línea SIEMPRE existe en Expo 51.
+        const anchor = 'react_native_post_install(installer)';
+
+        if (podfileContent.includes(anchor)) {
+          // Si ya tiene el fix, no lo ponemos otra vez
+          if (!podfileContent.includes('CLANG_CXX_LANGUAGE_STANDARD')) {
+             // Reemplazamos la línea por: La línea + Nuestro Código
+             const newContent = podfileContent.replace(anchor, `${anchor}\n${fixCode}`);
+             fs.writeFileSync(podfilePath, newContent);
+             console.log("✅ PARCHE C++17 APLICADO CON ÉXITO");
+          }
+        } else {
+          console.error("⚠️ NO SE ENCONTRÓ EL ANCLA EN EL PODFILE");
         }
+      } else {
+        console.error("⚠️ NO SE ENCONTRÓ EL ARCHIVO PODFILE en: " + podfilePath);
       }
       return config;
     },
