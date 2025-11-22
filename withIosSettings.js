@@ -9,23 +9,28 @@ module.exports = function withIosSettings(config) {
       const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
       
       if (fs.existsSync(podfilePath)) {
-        let podfileContent = fs.readFileSync(podfilePath, 'utf-8');
-
-        // Codigo para forzar C++17
+        const podfileContent = fs.readFileSync(podfilePath, 'utf-8');
+        
+        // Este código fuerza C++17 y corrige los Headers.
+        // Es la medicina exacta para 'shared_mutex not found'.
         const fixCode = `
+    # --- FIX INYECTADO PARA FIREBASE + STATIC ---
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
-        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = "c++17"
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
       end
     end
+    # --------------------------------------------
         `;
 
-        // Buscamos el inicio del bloque post_install usando Regex
-        const regex = /post_install\s*do\s*\|installer\|/;
+        // Buscamos una línea que SIEMPRE está en el Podfile de Expo 51
+        const anchor = 'react_native_post_install(installer';
         
-        if (regex.test(podfileContent) && !podfileContent.includes('CLANG_CXX_LANGUAGE_STANDARD')) {
-          podfileContent = podfileContent.replace(regex, (match) => `${match}\n${fixCode}`);
-          fs.writeFileSync(podfilePath, podfileContent);
+        if (podfileContent.includes(anchor) && !podfileContent.includes('FIX INYECTADO')) {
+          // Pegamos nuestro código justo después de esa línea
+          const newContent = podfileContent.replace(anchor, `${anchor})\n${fixCode}`);
+          fs.writeFileSync(podfilePath, newContent);
         }
       }
       return config;
