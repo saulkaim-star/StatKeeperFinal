@@ -24,7 +24,10 @@
     },
     "android": {
       "package": "com.baseballteamapp",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "@react-native-firebase/app",
@@ -42,6 +45,11 @@
           "photosPermission": "Allow access to your photos to update your profile."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "0cbe70df-45b6-4ed0-8a6c-177f0f0edb45"
+      }
+    }
   }
 }
