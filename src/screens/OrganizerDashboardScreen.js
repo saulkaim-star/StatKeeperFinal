@@ -1,98 +1,99 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   ActivityIndicator,
   Alert,
   Button,
-  SafeAreaView,
   FlatList,
-  TouchableOpacity,
-  Share,
+  Linking,
+  SafeAreaView,
   ScrollView,
-  Linking 
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import { handleDeleteAccount } from '../utils/authUtils';
 
 // --- Funciones Helper (calculateAvg, getLeaders) ... (SIN CAMBIOS) ---
 const calculateAvg = (hits, ab) => {
-    const avg = ab > 0 ? (hits / ab) : 0;
-    return avg.toFixed(3).toString().replace(/^0/, '');
+  const avg = ab > 0 ? (hits / ab) : 0;
+  return avg.toFixed(3).toString().replace(/^0/, '');
 };
 const getLeaders = (statKey, players, valueExtractor, isAvg = false, statLabel = statKey) => {
-    if (!players || players.length === 0) {
-        return { stat: statLabel, name: "N/A", value: isAvg ? ".000" : 0, teamName: "" };
-    }
-    const sortedPlayers = [...players].sort((a, b) => (valueExtractor(b) || 0) - (valueExtractor(a) || 0));
-    const topValue = valueExtractor(sortedPlayers[0]) || 0;
-    if (topValue === 0 && !isAvg) {
-        return { stat: statLabel, name: "N/A", value: 0, teamName: "" };
-    }
-    const leaders = sortedPlayers.filter(p => (valueExtractor(p) || 0) === topValue);
-    const leaderNames = leaders.map(p => `${p.playerName || 'Unknown'} (${p.teamName || '?'})`).join(", ");
-    const displayValue = isAvg ? calculateAvg(leaders[0]?.hits || 0, leaders[0]?.ab || 0) : topValue;
-    return { stat: statLabel, name: leaderNames, value: displayValue, teamName: "" };
+  if (!players || players.length === 0) {
+    return { stat: statLabel, name: "N/A", value: isAvg ? ".000" : 0, teamName: "" };
+  }
+  const sortedPlayers = [...players].sort((a, b) => (valueExtractor(b) || 0) - (valueExtractor(a) || 0));
+  const topValue = valueExtractor(sortedPlayers[0]) || 0;
+  if (topValue === 0 && !isAvg) {
+    return { stat: statLabel, name: "N/A", value: 0, teamName: "" };
+  }
+  const leaders = sortedPlayers.filter(p => (valueExtractor(p) || 0) === topValue);
+  const leaderNames = leaders.map(p => `${p.playerName || 'Unknown'} (${p.teamName || '?'})`).join(", ");
+  const displayValue = isAvg ? calculateAvg(leaders[0]?.hits || 0, leaders[0]?.ab || 0) : topValue;
+  return { stat: statLabel, name: leaderNames, value: displayValue, teamName: "" };
 };
 
 // --- Componentes (StandingItem, GameResultItem, PendingGameItem, LeaderItem) ... (SIN CAMBIOS) ---
 const StandingItem = ({ item, index }) => (
-    <View style={styles.standingRow}>
-        <Text style={[styles.standingCell, styles.rankCell]}>{index + 1}</Text>
-        <Text style={[styles.standingCell, styles.teamNameCell]} numberOfLines={1} ellipsizeMode='tail'>{item.name}</Text>
-        <Text style={styles.standingCell}>{item.GP}</Text>
-        <Text style={styles.standingCell}>{item.W}</Text>
-        <Text style={styles.standingCell}>{item.L}</Text>
-        <Text style={styles.standingCell}>{item.T}</Text>
-    </View>
+  <View style={styles.standingRow}>
+    <Text style={[styles.standingCell, styles.rankCell]}>{index + 1}</Text>
+    <Text style={[styles.standingCell, styles.teamNameCell]} numberOfLines={1} ellipsizeMode='tail'>{item.name}</Text>
+    <Text style={styles.standingCell}>{item.GP}</Text>
+    <Text style={styles.standingCell}>{item.W}</Text>
+    <Text style={styles.standingCell}>{item.L}</Text>
+    <Text style={styles.standingCell}>{item.T}</Text>
+  </View>
 );
 const GameResultItem = ({ item }) => {
-    const gameDate = item.gameDate?.toDate();
-    const formattedDate = gameDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const statusStyle = styles[`status_${item.status}`] || styles.status_unknown;
-    return (
-        <View style={styles.gameResultRow}>
-            <Text style={styles.gameResultDate}>{formattedDate}</Text>
-           <View style={styles.gameResultTeams}>
-                <Text style={styles.gameResultTeamText} numberOfLines={1} ellipsizeMode='tail'>{item.homeTeamName}</Text>
-                <Text style={styles.gameResultTeamText} numberOfLines={1} ellipsizeMode='tail'>{item.awayTeamName}</Text>
-            </View>
-            <View style={styles.gameResultScores}>
-                <Text style={styles.gameResultScoreText}>{item.status === 'completed' ? item.homeScore : '-'}</Text>
-                <Text style={styles.gameResultScoreText}>{item.status === 'completed' ? item.awayScore : '-'}</Text>
-            </View>
-            <Text style={[styles.statusBadge, statusStyle]}>{item.status.replace('_', ' ')}</Text>
-        </View>
-    );
+  const gameDate = item.gameDate?.toDate();
+  const formattedDate = gameDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const statusStyle = styles[`status_${item.status}`] || styles.status_unknown;
+  return (
+    <View style={styles.gameResultRow}>
+      <Text style={styles.gameResultDate}>{formattedDate}</Text>
+      <View style={styles.gameResultTeams}>
+        <Text style={styles.gameResultTeamText} numberOfLines={1} ellipsizeMode='tail'>{item.homeTeamName}</Text>
+        <Text style={styles.gameResultTeamText} numberOfLines={1} ellipsizeMode='tail'>{item.awayTeamName}</Text>
+      </View>
+      <View style={styles.gameResultScores}>
+        <Text style={styles.gameResultScoreText}>{item.status === 'completed' ? item.homeScore : '-'}</Text>
+        <Text style={styles.gameResultScoreText}>{item.status === 'completed' ? item.awayScore : '-'}</Text>
+      </View>
+      <Text style={[styles.statusBadge, statusStyle]}>{item.status.replace('_', ' ')}</Text>
+    </View>
+  );
 };
 const PendingGameItem = ({ item, onResolve }) => {
-    const gameDate = item.gameDate?.toDate();
-    const formattedDate = gameDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    let reason = "Unknown"; let reasonStyle = styles.reasonUnknown;
-    const isDispute = item._isDispute === true; const isDelayed = item._isDelayed === true;
-    if (isDispute) { reason = "Dispute"; reasonStyle = styles.reasonDispute; }
-    else if (isDelayed) { reason = "Validation Delayed"; reasonStyle = styles.reasonDelayed; }
-    return (
-        <View style={styles.pendingGameRow}>
-            <View style={styles.pendingGameInfo}>
-                <Text style={styles.pendingGameTeams} numberOfLines={1} ellipsizeMode='tail'>{item.awayTeamName} @ {item.homeTeamName}</Text>
-                <Text style={styles.pendingGameDate}>{formattedDate}</Text>
-                <Text style={[styles.pendingGameReason, reasonStyle]}>{reason}</Text>
-                 {isDispute && ( <Text style={styles.pendingGameScores}> Reported: H:{item.homeScore ?? '?'} A:{item.awayScore ?? '?'} </Text> )}
-            </View>
-            <TouchableOpacity onPress={() => onResolve(item)} style={styles.resolveButton}>
-                <Text style={styles.resolveButtonText}>Resolve</Text>
-            </TouchableOpacity>
-        </View>
-    );
+  const gameDate = item.gameDate?.toDate();
+  const formattedDate = gameDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  let reason = "Unknown"; let reasonStyle = styles.reasonUnknown;
+  const isDispute = item._isDispute === true; const isDelayed = item._isDelayed === true;
+  if (isDispute) { reason = "Dispute"; reasonStyle = styles.reasonDispute; }
+  else if (isDelayed) { reason = "Validation Delayed"; reasonStyle = styles.reasonDelayed; }
+  return (
+    <View style={styles.pendingGameRow}>
+      <View style={styles.pendingGameInfo}>
+        <Text style={styles.pendingGameTeams} numberOfLines={1} ellipsizeMode='tail'>{item.awayTeamName} @ {item.homeTeamName}</Text>
+        <Text style={styles.pendingGameDate}>{formattedDate}</Text>
+        <Text style={[styles.pendingGameReason, reasonStyle]}>{reason}</Text>
+        {isDispute && (<Text style={styles.pendingGameScores}> Reported: H:{item.homeScore ?? '?'} A:{item.awayScore ?? '?'} </Text>)}
+      </View>
+      <TouchableOpacity onPress={() => onResolve(item)} style={styles.resolveButton}>
+        <Text style={styles.resolveButtonText}>Resolve</Text>
+      </TouchableOpacity>
+    </View>
+  );
 };
 const LeaderItem = ({ item }) => (
-    <View style={styles.leaderRow}>
-        <Text style={styles.leaderStat}>{item.stat}</Text>
-        <Text style={styles.leaderName} numberOfLines={2} ellipsizeMode="tail">{item.name}</Text>
-        <Text style={styles.leaderValue}>{item.value}</Text>
-    </View>
+  <View style={styles.leaderRow}>
+    <Text style={styles.leaderStat}>{item.stat}</Text>
+    <Text style={styles.leaderName} numberOfLines={2} ellipsizeMode="tail">{item.name}</Text>
+    <Text style={styles.leaderValue}>{item.value}</Text>
+  </View>
 );
 
 // --- Componente Principal (MODIFICADO) ---
@@ -110,36 +111,36 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
   const [error, setError] = useState(null);
   const [teams, setTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
-  const [games, setGames] = useState([]); 
+  const [games, setGames] = useState([]);
   const [loadingGames, setLoadingGames] = useState(true);
   const [pendingActionGames, setPendingActionGames] = useState([]);
   const [loadingPendingGames, setLoadingPendingGames] = useState(true);
-  
+
   // --- ¡NUEVO ESTADO! ---
   const [isArchiving, setIsArchiving] = useState(false); // Para el botón de finalizar
 
   // --- Log Out / useLayoutEffect (SIN CAMBIOS) ---
   const handleLogout = () => { auth().signOut(); };
   useLayoutEffect(() => {
-     navigation.setOptions({
-        title: competition?.name || 'My Competition',
-        headerTitleAlign: 'center',
-        headerRight: () => ( <Button onPress={handleLogout} title="Log Out" color="#ef4444" /> ),
-     });
-   }, [navigation, competition]);
+    navigation.setOptions({
+      title: competition?.name || 'My Competition',
+      headerTitleAlign: 'center',
+      headerRight: () => (<Button onPress={handleLogout} title="Log Out" color="#ef4444" />),
+    });
+  }, [navigation, competition]);
 
   // --- useEffect (Listeners de Firestore) (SIN CAMBIOS) ... ---
   useEffect(() => {
     console.log("EFFECT: Fetching competition data...");
     if (!competitionId) {
-        console.error("EFFECT: No competition ID received!"); setError('No competition ID was provided.');
-        setLoadingCompetition(false); setLoadingTeams(false); setLoadingGames(false); setLoadingPendingGames(false); return;
+      console.error("EFFECT: No competition ID received!"); setError('No competition ID was provided.');
+      setLoadingCompetition(false); setLoadingTeams(false); setLoadingGames(false); setLoadingPendingGames(false); return;
     }
     const subscriber = firestore().collection('competitions').doc(competitionId)
-      .onSnapshot( doc => {
-          if (doc.exists) { console.log("EFFECT: Competition data FOUND:", doc.id); setCompetition({ id: doc.id, ...doc.data() }); setError(null); }
-          else { console.error("EFFECT: Competition document NOT FOUND for ID:", competitionId); setError(`Competition with ID ${competitionId} not found.`); setCompetition(null); }
-          setLoadingCompetition(false);
+      .onSnapshot(doc => {
+        if (doc.exists) { console.log("EFFECT: Competition data FOUND:", doc.id); setCompetition({ id: doc.id, ...doc.data() }); setError(null); }
+        else { console.error("EFFECT: Competition document NOT FOUND for ID:", competitionId); setError(`Competition with ID ${competitionId} not found.`); setCompetition(null); }
+        setLoadingCompetition(false);
       }, err => { console.error('EFFECT: Error fetching competition:', err); setError('Could not load competition data.'); setCompetition(null); setLoadingCompetition(false); });
     return () => { console.log("EFFECT: Cleaning up competition listener."); subscriber(); };
   }, [competitionId]);
@@ -147,9 +148,9 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (!competitionId) return; console.log("EFFECT: Fetching teams list..."); setLoadingTeams(true);
     const teamsSubscriber = firestore().collection('competition_teams').where('competitionId', '==', competitionId).orderBy('joinedAt', 'asc')
-      .onSnapshot( querySnapshot => {
-          const fetchedTeams = querySnapshot.docs.map(doc => ({ id: doc.id, teamId: doc.data().teamId, name: doc.data().teamName }));
-          console.log("EFFECT: Teams snapshot received, count:", fetchedTeams.length); setTeams(fetchedTeams); setLoadingTeams(false);
+      .onSnapshot(querySnapshot => {
+        const fetchedTeams = querySnapshot.docs.map(doc => ({ id: doc.id, teamId: doc.data().teamId, name: doc.data().teamName }));
+        console.log("EFFECT: Teams snapshot received, count:", fetchedTeams.length); setTeams(fetchedTeams); setLoadingTeams(false);
       }, err => { console.error('EFFECT: Error fetching teams:', err); setError(prev => prev || 'Could not load participating teams.'); setTeams([]); setLoadingTeams(false); });
     return () => { console.log("EFFECT: Cleaning up teams listener."); teamsSubscriber(); };
   }, [competitionId]);
@@ -157,9 +158,9 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
   useEffect(() => {
     if (!competitionId) return; console.log("EFFECT: Fetching games list (results)..."); setLoadingGames(true);
     const gamesSubscriber = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('status', 'in', ['completed', 'pending_validation']).orderBy('gameDate', 'desc')
-      .onSnapshot( querySnapshot => {
-          const fetchedGames = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          console.log("EFFECT: Games (results) snapshot received, count:", fetchedGames.length); setGames(fetchedGames); setLoadingGames(false);
+      .onSnapshot(querySnapshot => {
+        const fetchedGames = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log("EFFECT: Games (results) snapshot received, count:", fetchedGames.length); setGames(fetchedGames); setLoadingGames(false);
       }, err => { console.error('EFFECT: Error fetching games (results):', err); setError(prev => prev || 'Could not load game results. Check index.'); setGames([]); setLoadingGames(false); });
     return () => { console.log("EFFECT: Cleaning up games (results) listener."); gamesSubscriber(); };
   }, [competitionId]);
@@ -171,23 +172,23 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
     const delayedQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('status', '==', 'pending_validation').where('lastUpdated', '<', delayTimestamp);
     let pendingMap = {}; let disputesReceivedFirst = false; let delayedReceivedFirst = false;
     const updateState = () => {
-        const actionItems = Object.values(pendingMap).filter(item => item._isDispute || item._isDelayed); console.log("EFFECT: Updating Pending Action state, count:", actionItems.length);
-        setPendingActionGames(actionItems.sort((a,b) => (a.gameDate?.toDate() || 0) - (b.gameDate?.toDate() || 0) ));
-        if (disputesReceivedFirst && delayedReceivedFirst && !initialLoadComplete) { console.log("EFFECT: Both pending listeners responded. Setting loadingPendingGames to false."); setLoadingPendingGames(false); initialLoadComplete = true; }
-        else if (!initialLoadComplete) { console.log("EFFECT: Waiting for first response from both pending listeners..."); }
-        else if (initialLoadComplete) { setLoadingPendingGames(false); }
+      const actionItems = Object.values(pendingMap).filter(item => item._isDispute || item._isDelayed); console.log("EFFECT: Updating Pending Action state, count:", actionItems.length);
+      setPendingActionGames(actionItems.sort((a, b) => (a.gameDate?.toDate() || 0) - (b.gameDate?.toDate() || 0)));
+      if (disputesReceivedFirst && delayedReceivedFirst && !initialLoadComplete) { console.log("EFFECT: Both pending listeners responded. Setting loadingPendingGames to false."); setLoadingPendingGames(false); initialLoadComplete = true; }
+      else if (!initialLoadComplete) { console.log("EFFECT: Waiting for first response from both pending listeners..."); }
+      else if (initialLoadComplete) { setLoadingPendingGames(false); }
     };
     const disputesListener = disputesQuery.onSnapshot(snapshot => {
-        console.log("EFFECT: Disputes snapshot received, size:", snapshot.size); let changed = false; const currentDisputeIds = new Set();
-        snapshot.docs.forEach(doc => { currentDisputeIds.add(doc.id); if (!pendingMap[doc.id] || !pendingMap[doc.id]._isDispute) changed = true; pendingMap[doc.id] = { ...(pendingMap[doc.id] || {}), id: doc.id, ...doc.data(), _isDispute: true }; });
-        Object.keys(pendingMap).forEach(id => { if (pendingMap[id]._isDispute && !currentDisputeIds.has(id)) { pendingMap[id]._isDispute = false; changed = true; } });
-        disputesReceivedFirst = true; if(changed || !initialLoadComplete) updateState(); else if (initialLoadComplete) setLoadingPendingGames(false);
+      console.log("EFFECT: Disputes snapshot received, size:", snapshot.size); let changed = false; const currentDisputeIds = new Set();
+      snapshot.docs.forEach(doc => { currentDisputeIds.add(doc.id); if (!pendingMap[doc.id] || !pendingMap[doc.id]._isDispute) changed = true; pendingMap[doc.id] = { ...(pendingMap[doc.id] || {}), id: doc.id, ...doc.data(), _isDispute: true }; });
+      Object.keys(pendingMap).forEach(id => { if (pendingMap[id]._isDispute && !currentDisputeIds.has(id)) { pendingMap[id]._isDispute = false; changed = true; } });
+      disputesReceivedFirst = true; if (changed || !initialLoadComplete) updateState(); else if (initialLoadComplete) setLoadingPendingGames(false);
     }, err => { console.error("Error fetching disputes:", err); setError(prev => prev || 'Could not load disputes. Check Index.'); disputesReceivedFirst = true; updateState(); });
     const delayedListener = delayedQuery.onSnapshot(snapshot => {
-        console.log("EFFECT: Delayed snapshot received, size:", snapshot.size); let changed = false; const currentDelayedIds = new Set();
-        snapshot.docs.forEach(doc => { const data = doc.data(); const isTrulyDelayed = (data.homeManagerValidated && !data.awayManagerValidated) || (!data.homeManagerValidated && data.awayManagerValidated); if (isTrulyDelayed) { currentDelayedIds.add(doc.id); if (!pendingMap[doc.id] || !pendingMap[doc.id]._isDelayed) changed = true; pendingMap[doc.id] = { ...(pendingMap[doc.id] || {}), id: doc.id, ...data, _isDelayed: true }; } });
-        Object.keys(pendingMap).forEach(id => { if(pendingMap[id]._isDelayed && !currentDelayedIds.has(id)) { pendingMap[id]._isDelayed = false; changed = true; } });
-        delayedReceivedFirst = true; if(changed || !initialLoadComplete) updateState(); else if (initialLoadComplete) setLoadingPendingGames(false);
+      console.log("EFFECT: Delayed snapshot received, size:", snapshot.size); let changed = false; const currentDelayedIds = new Set();
+      snapshot.docs.forEach(doc => { const data = doc.data(); const isTrulyDelayed = (data.homeManagerValidated && !data.awayManagerValidated) || (!data.homeManagerValidated && data.awayManagerValidated); if (isTrulyDelayed) { currentDelayedIds.add(doc.id); if (!pendingMap[doc.id] || !pendingMap[doc.id]._isDelayed) changed = true; pendingMap[doc.id] = { ...(pendingMap[doc.id] || {}), id: doc.id, ...data, _isDelayed: true }; } });
+      Object.keys(pendingMap).forEach(id => { if (pendingMap[id]._isDelayed && !currentDelayedIds.has(id)) { pendingMap[id]._isDelayed = false; changed = true; } });
+      delayedReceivedFirst = true; if (changed || !initialLoadComplete) updateState(); else if (initialLoadComplete) setLoadingPendingGames(false);
     }, err => { console.error("Error fetching delayed games:", err); setError(prev => prev || 'Could not load delayed games. Check Index.'); delayedReceivedFirst = true; updateState(); });
     return () => { console.log("EFFECT: Cleaning up pending games listeners."); disputesListener(); delayedListener(); };
   }, [competitionId]);
@@ -197,43 +198,43 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
     console.log("MEMO: Calculating standings..."); const standingsMap = {};
     teams.forEach(t => { standingsMap[t.teamId] = { id: t.teamId, name: t.name, W: 0, L: 0, T: 0, GP: 0 }; });
     const completedGames = games.filter(g => g.status === 'completed');
-    completedGames.forEach(g => { const hId=g.homeTeamId, aId=g.awayTeamId, hS=g.homeScore, aS=g.awayScore; if (!standingsMap[hId]) standingsMap[hId]={id:hId,name:g.homeTeamName,W:0,L:0,T:0,GP:0}; if (!standingsMap[aId]) standingsMap[aId]={id:aId,name:g.awayTeamName,W:0,L:0,T:0,GP:0}; standingsMap[hId].GP++; standingsMap[aId].GP++; if (hS>aS) { standingsMap[hId].W++; standingsMap[aId].L++; } else if (aS>hS) { standingsMap[aId].W++; standingsMap[hId].L++; } else { standingsMap[hId].T++; standingsMap[aId].T++; } });
+    completedGames.forEach(g => { const hId = g.homeTeamId, aId = g.awayTeamId, hS = g.homeScore, aS = g.awayScore; if (!standingsMap[hId]) standingsMap[hId] = { id: hId, name: g.homeTeamName, W: 0, L: 0, T: 0, GP: 0 }; if (!standingsMap[aId]) standingsMap[aId] = { id: aId, name: g.awayTeamName, W: 0, L: 0, T: 0, GP: 0 }; standingsMap[hId].GP++; standingsMap[aId].GP++; if (hS > aS) { standingsMap[hId].W++; standingsMap[aId].L++; } else if (aS > hS) { standingsMap[aId].W++; standingsMap[hId].L++; } else { standingsMap[hId].T++; standingsMap[aId].T++; } });
     const result = Object.values(standingsMap).sort((a, b) => b.W - a.W || a.L - b.L || b.T - a.T);
     console.log("MEMO: Standings calculation finished, count:", result.length); return result;
   }, [games, teams]);
   const leagueLeadersData = useMemo(() => {
-      console.log("MEMO: Calculating League Leaders..."); const statsMap = {}; const completedGames = games.filter(g => g.status === 'completed');
-      console.log("MEMO: Found", completedGames.length, "completed games for leaders calc.");
-      completedGames.forEach(game => { const processBoxScore = (boxScore, teamName) => { if (boxScore && Array.isArray(boxScore)) { boxScore.forEach(playerStat => { const key = playerStat.id || playerStat.playerName; if (!key) return; if (!statsMap[key]) { statsMap[key] = { id: key, playerName: playerStat.playerName || playerStat.name || 'Unknown', teamName: teamName, ab: 0, hits: 0, doubles: 0, triples: 0, homeruns: 0, walks: 0, k: 0 }; } statsMap[key].teamName = teamName; statsMap[key].ab += (playerStat.game_ab || 0); statsMap[key].hits += (playerStat.game_hits || 0); statsMap[key].doubles += (playerStat.game_doubles || 0); statsMap[key].triples += (playerStat.game_triples || 0); statsMap[key].homeruns += (playerStat.game_homeruns || 0); statsMap[key].walks += (playerStat.game_walks || 0); statsMap[key].k += (playerStat.game_k || 0); }); } }; processBoxScore(game.homeBoxScore, game.homeTeamName); processBoxScore(game.awayBoxScore, game.awayTeamName); });
-      const aggregatedStats = Object.values(statsMap).map(p => ({ ...p, avg: calculateAvg(p.hits, p.ab) }));
-      console.log("MEMO: Aggregated stats count:", aggregatedStats.length); const minABForAVG = 1; const qualifiedPlayersAVG = aggregatedStats.filter(p => (p.ab || 0) >= minABForAVG);
-      const leaders = [ getLeaders("AVG", qualifiedPlayersAVG, p => (p.hits || 0) / (p.ab || 1), true), getLeaders("H", aggregatedStats, p => p.hits || 0, false, "Hits"), getLeaders("HR", aggregatedStats, p => p.homeruns || 0, false, "HRs"), getLeaders("BB", aggregatedStats, p => p.walks || 0, false, "Walks"), getLeaders("K", aggregatedStats, p => p.k || 0), ];
-      console.log("MEMO: Leaders calculation finished:", leaders); return leaders;
+    console.log("MEMO: Calculating League Leaders..."); const statsMap = {}; const completedGames = games.filter(g => g.status === 'completed');
+    console.log("MEMO: Found", completedGames.length, "completed games for leaders calc.");
+    completedGames.forEach(game => { const processBoxScore = (boxScore, teamName) => { if (boxScore && Array.isArray(boxScore)) { boxScore.forEach(playerStat => { const key = playerStat.id || playerStat.playerName; if (!key) return; if (!statsMap[key]) { statsMap[key] = { id: key, playerName: playerStat.playerName || playerStat.name || 'Unknown', teamName: teamName, ab: 0, hits: 0, doubles: 0, triples: 0, homeruns: 0, walks: 0, k: 0 }; } statsMap[key].teamName = teamName; statsMap[key].ab += (playerStat.game_ab || 0); statsMap[key].hits += (playerStat.game_hits || 0); statsMap[key].doubles += (playerStat.game_doubles || 0); statsMap[key].triples += (playerStat.game_triples || 0); statsMap[key].homeruns += (playerStat.game_homeruns || 0); statsMap[key].walks += (playerStat.game_walks || 0); statsMap[key].k += (playerStat.game_k || 0); }); } }; processBoxScore(game.homeBoxScore, game.homeTeamName); processBoxScore(game.awayBoxScore, game.awayTeamName); });
+    const aggregatedStats = Object.values(statsMap).map(p => ({ ...p, avg: calculateAvg(p.hits, p.ab) }));
+    console.log("MEMO: Aggregated stats count:", aggregatedStats.length); const minABForAVG = 1; const qualifiedPlayersAVG = aggregatedStats.filter(p => (p.ab || 0) >= minABForAVG);
+    const leaders = [getLeaders("AVG", qualifiedPlayersAVG, p => (p.hits || 0) / (p.ab || 1), true), getLeaders("H", aggregatedStats, p => p.hits || 0, false, "Hits"), getLeaders("HR", aggregatedStats, p => p.homeruns || 0, false, "HRs"), getLeaders("BB", aggregatedStats, p => p.walks || 0, false, "Walks"), getLeaders("K", aggregatedStats, p => p.k || 0),];
+    console.log("MEMO: Leaders calculation finished:", leaders); return leaders;
   }, [games]);
 
   // --- Funciones Share / Resolve / Web (SIN CAMBIOS) ---
-  const handleShareCode = async () => { if (!competition?.inviteCode) return; try { await Share.share({ message: `Join competition "${competition.name}"! Code: ${competition.inviteCode}` }); } catch (e) { Alert.alert('Error', 'Could not share code.'); }};
+  const handleShareCode = async () => { if (!competition?.inviteCode) return; try { await Share.share({ message: `Join competition "${competition.name}"! Code: ${competition.inviteCode}` }); } catch (e) { Alert.alert('Error', 'Could not share code.'); } };
   const handleResolveGame = (game) => { navigation.navigate('ResolveGame', { gameId: game.id, competitionId: competitionId }); };
   const handleViewTeams = () => { Alert.alert("View Teams", "Functionality to view/manage teams is pending implementation."); };
   const handleOpenWebDashboard = async () => {
     if (!competitionId) {
-        Alert.alert("Error", "Cannot open web dashboard without a competition ID.");
-        return;
+      Alert.alert("Error", "Cannot open web dashboard without a competition ID.");
+      return;
     }
     try {
-        const supported = await Linking.canOpenURL(webDashboardUrl);
-        if (supported) {
-            await Linking.openURL(webDashboardUrl);
-        } else {
-            Alert.alert("Error", `Don't know how to open this URL: ${webDashboardUrl}`);
-        }
+      const supported = await Linking.canOpenURL(webDashboardUrl);
+      if (supported) {
+        await Linking.openURL(webDashboardUrl);
+      } else {
+        Alert.alert("Error", `Don't know how to open this URL: ${webDashboardUrl}`);
+      }
     } catch (err) {
-        console.error("Failed to open web URL:", err);
-        Alert.alert("Error", "Failed to open the link.");
+      console.error("Failed to open web URL:", err);
+      Alert.alert("Error", "Failed to open the link.");
     }
   };
 
-  
+
   // --- ¡NUEVA FUNCIÓN! (AHORA 100% EN INGLÉS) ---
   const handleArchiveTournament = async () => {
     const currentUser = auth().currentUser;
@@ -261,7 +262,7 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
               // 3. Tarea 1: Actualizar el torneo (marcarlo como completado)
               const tournamentRef = firestore().collection('competitions').doc(competitionId);
               batch.update(tournamentRef, {
-                status: 'completed', 
+                status: 'completed',
                 archivedAt: firestore.FieldValue.serverTimestamp(),
               });
 
@@ -276,7 +277,7 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
 
               // ¡Éxito! (EN INGLÉS)
               Alert.alert("Tournament Archived", "This tournament has been finalized and archived.");
-              
+
             } catch (err) {
               console.error("Error archiving tournament: ", err);
               // Mensaje de error (EN INGLÉS)
@@ -293,100 +294,117 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
 
   // --- isLoading general (SIN CAMBIOS) ---
   const isLoadingInitial = loadingCompetition || loadingTeams;
-  console.log("RENDER: isLoading flags:", {loadingCompetition, loadingTeams, loadingGames, loadingPendingGames});
+  console.log("RENDER: isLoading flags:", { loadingCompetition, loadingTeams, loadingGames, loadingPendingGames });
   console.log("RENDER: Current error state:", error);
 
   // --- Renderizado Condicional Inicial (SIN CAMBIOS) ---
   if (isLoadingInitial && !competition && teams.length === 0 && !error) { console.log("RENDER: Showing initial loading indicator."); return <View style={styles.center}><ActivityIndicator size="large" /></View>; }
-  if (error && !competition) { console.log("RENDER: Showing full error screen (no competition data)."); return ( <SafeAreaView style={styles.container}><View style={styles.center}><Text style={styles.errorText}>{error}</Text></View></SafeAreaView> ); }
-   if (!competition && !isLoadingInitial && !error) { console.log("RENDER: Showing 'No competition data found' screen."); return <View style={styles.center}><Text style={styles.emptyText}>No competition data found.</Text></View>; }
+  if (error && !competition) { console.log("RENDER: Showing full error screen (no competition data)."); return (<SafeAreaView style={styles.container}><View style={styles.center}><Text style={styles.errorText}>{error}</Text></View></SafeAreaView>); }
+  if (!competition && !isLoadingInitial && !error) { console.log("RENDER: Showing 'No competition data found' screen."); return <View style={styles.center}><Text style={styles.emptyText}>No competition data found.</Text></View>; }
 
   // --- Renderizado Principal (MODIFICADO EL INFO CARD) ---
   console.log("RENDER: Rendering main dashboard content.");
   return (
     <SafeAreaView style={styles.container}>
-        <ScrollView>
-            {error && <View style={styles.errorBanner}><Text style={styles.errorBannerText}>{error}</Text></View>}
-            {(loadingGames || loadingPendingGames) && !error && competition && (<View style={styles.loadingSection}><ActivityIndicator /><Text style={styles.loadingText}> Loading sections...</Text></View>)}
+      <ScrollView>
+        {error && <View style={styles.errorBanner}><Text style={styles.errorBannerText}>{error}</Text></View>}
+        {(loadingGames || loadingPendingGames) && !error && competition && (<View style={styles.loadingSection}><ActivityIndicator /><Text style={styles.loadingText}> Loading sections...</Text></View>)}
 
-            {/* 1. Tabla de Posiciones */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Standings</Text>
-                <View style={[styles.standingRow, styles.standingHeaderRow]}>
-                    <Text style={[styles.standingCell, styles.rankCell, styles.standingHeaderText]}>#</Text>
-                    <Text style={[styles.standingCell, styles.teamNameCell, styles.standingHeaderText]}>Team</Text>
-                    <Text style={[styles.standingCell, styles.standingHeaderText]}>GP</Text>
-                    <Text style={[styles.standingCell, styles.standingHeaderText]}>W</Text><Text style={[styles.standingCell, styles.standingHeaderText]}>L</Text><Text style={[styles.standingCell, styles.standingHeaderText]}>T</Text>
-                </View>
-                {loadingTeams || loadingGames ? ( <ActivityIndicator style={{ marginVertical: 10 }}/> )
-                : standings.length > 0 ? ( <FlatList data={standings} keyExtractor={(item) => item.id} renderItem={({ item, index }) => <StandingItem item={item} index={index} />} scrollEnabled={false} /> )
-                : ( <Text style={styles.emptyListText}>No standings available yet.</Text> )}
-            </View>
+        {/* 1. Tabla de Posiciones */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Standings</Text>
+          <View style={[styles.standingRow, styles.standingHeaderRow]}>
+            <Text style={[styles.standingCell, styles.rankCell, styles.standingHeaderText]}>#</Text>
+            <Text style={[styles.standingCell, styles.teamNameCell, styles.standingHeaderText]}>Team</Text>
+            <Text style={[styles.standingCell, styles.standingHeaderText]}>GP</Text>
+            <Text style={[styles.standingCell, styles.standingHeaderText]}>W</Text><Text style={[styles.standingCell, styles.standingHeaderText]}>L</Text><Text style={[styles.standingCell, styles.standingHeaderText]}>T</Text>
+          </View>
+          {loadingTeams || loadingGames ? (<ActivityIndicator style={{ marginVertical: 10 }} />)
+            : standings.length > 0 ? (<FlatList data={standings} keyExtractor={(item) => item.id} renderItem={({ item, index }) => <StandingItem item={item} index={index} />} scrollEnabled={false} />)
+              : (<Text style={styles.emptyListText}>No standings available yet.</Text>)}
+        </View>
 
-            {/* 2. Líderes de Liga */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>League Leaders</Text>
-                {loadingGames ? ( <ActivityIndicator style={{ marginVertical: 10 }}/> )
-                : leagueLeadersData && leagueLeadersData.length > 0 ? ( leagueLeadersData.map(leader => <LeaderItem key={leader.stat} item={leader} />) )
-                : ( <Text style={styles.emptyListText}>Not enough data for leaders yet.</Text> )}
-            </View>
+        {/* 2. Líderes de Liga */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>League Leaders</Text>
+          {loadingGames ? (<ActivityIndicator style={{ marginVertical: 10 }} />)
+            : leagueLeadersData && leagueLeadersData.length > 0 ? (leagueLeadersData.map(leader => <LeaderItem key={leader.stat} item={leader} />))
+              : (<Text style={styles.emptyListText}>Not enough data for leaders yet.</Text>)}
+        </View>
 
-            {/* 3. Resultados de Juegos (Últimos 8) */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Recent Game Results</Text>
-                {loadingGames ? ( <ActivityIndicator style={{ marginVertical: 10 }}/> )
-                : games.length > 0 ? ( <FlatList data={games.slice(0, 8)} keyExtractor={(item) => item.id} renderItem={({ item }) => <GameResultItem item={item} />} scrollEnabled={false} /> )
-                : ( <Text style={styles.emptyListText}>No games played or pending validation.</Text> )}
-            </View>
+        {/* 3. Resultados de Juegos (Últimos 8) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Game Results</Text>
+          {loadingGames ? (<ActivityIndicator style={{ marginVertical: 10 }} />)
+            : games.length > 0 ? (<FlatList data={games.slice(0, 8)} keyExtractor={(item) => item.id} renderItem={({ item }) => <GameResultItem item={item} />} scrollEnabled={false} />)
+              : (<Text style={styles.emptyListText}>No games played or pending validation.</Text>)}
+        </View>
 
-            {/* Sección Pendientes de Acción */}
-            <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Pending Action ({loadingPendingGames ? '...' : pendingActionGames.length})</Text>
-                {loadingPendingGames ? ( <ActivityIndicator style={{ marginVertical: 10 }}/> )
-                : pendingActionGames.length > 0 ? ( <FlatList data={pendingActionGames} keyExtractor={(item) => item.id} renderItem={({ item }) => <PendingGameItem item={item} onResolve={handleResolveGame} />} scrollEnabled={false} /> )
-                : ( <Text style={styles.emptyListText}>No games require immediate action.</Text> )}
-            </View>
-        </ScrollView>
+        {/* Sección Pendientes de Acción */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pending Action ({loadingPendingGames ? '...' : pendingActionGames.length})</Text>
+          {loadingPendingGames ? (<ActivityIndicator style={{ marginVertical: 10 }} />)
+            : pendingActionGames.length > 0 ? (<FlatList data={pendingActionGames} keyExtractor={(item) => item.id} renderItem={({ item }) => <PendingGameItem item={item} onResolve={handleResolveGame} />} scrollEnabled={false} />)
+              : (<Text style={styles.emptyListText}>No games require immediate action.</Text>)}
+        </View>
 
-        {/* 5. Info Card al final (¡MODIFICADO!) */}
-        {competition && (
-            <View style={styles.infoCard}>
-                {/* 1. Contenedor de Invite Code */}
-                <View style={styles.inviteCodeContainer}>
-                    <Text style={styles.inviteCodeLabel}>Invite Code:</Text>
-                    <Text style={styles.inviteCodeValue}>{competition.inviteCode}</Text>
-                    <TouchableOpacity onPress={handleShareCode} style={styles.shareButton} disabled={isArchiving}>
-                        <Text style={styles.shareButtonText}>🔗 Share</Text>
-                    </TouchableOpacity>
-                </View>
+        {/* --- BOTÓN DE ELIMINAR DENTRO DEL SCROLLVIEW (AL FINAL) --- */}
+        <View style={{ padding: 20, alignItems: 'center' }}>
+          <TouchableOpacity
+            style={{ backgroundColor: '#ef4444', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, marginTop: 10 }}
+            onPress={handleDeleteAccount}
+          >
+            <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>
+              Delete Account
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-                {/* 2. ¡BOTÓN PARA WEB DASHBOARD! */}
-                <TouchableOpacity 
-                    style={[styles.viewTeamsButton, { marginTop: 10, backgroundColor: '#10B981' }]} 
-                    onPress={handleOpenWebDashboard}
-                    disabled={isArchiving}
-                >
-                    <Text style={[styles.viewTeamsButtonText, { color: '#FFFFFF' }]}>
-                        📊 View Web Dashboard
-                    </Text>
-                </TouchableOpacity>
+        {/* Espaciador para que el botón no quede tapado por el footer fijo */}
+        <View style={{ height: 180 }} />
 
-                {/* 3. ¡NUEVO BOTÓN PARA FINALIZAR TORNEO! (EN INGLÉS) */}
-                <TouchableOpacity 
-                    style={[styles.viewTeamsButton, { marginTop: 10, backgroundColor: isArchiving ? '#fca5a5' : '#ef4444' }]} // Color rojo
-                    onPress={handleArchiveTournament}
-                    disabled={isArchiving}
-                >
-                    {isArchiving ? (
-                      <ActivityIndicator color="#FFFFFF" />
-                    ) : (
-                      <Text style={[styles.viewTeamsButtonText, { color: '#FFFFFF' }]}>
-                        🛑 Finalize & Archive Tournament
-                      </Text>
-                    )}
-                </TouchableOpacity>
-            </View>
-        )}
+      </ScrollView>
+
+      {/* 5. Info Card (FIXED FOOTER - Restaurado a su posición original) */}
+      {competition && (
+        <View style={styles.infoCard}>
+          {/* 1. Contenedor de Invite Code */}
+          <View style={styles.inviteCodeContainer}>
+            <Text style={styles.inviteCodeLabel}>Invite Code:</Text>
+            <Text style={styles.inviteCodeValue}>{competition.inviteCode}</Text>
+            <TouchableOpacity onPress={handleShareCode} style={styles.shareButton} disabled={isArchiving}>
+              <Text style={styles.shareButtonText}>🔗 Share</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 2. ¡BOTÓN PARA WEB DASHBOARD! */}
+          <TouchableOpacity
+            style={[styles.viewTeamsButton, { marginTop: 10, backgroundColor: '#10B981' }]}
+            onPress={handleOpenWebDashboard}
+            disabled={isArchiving}
+          >
+            <Text style={[styles.viewTeamsButtonText, { color: '#FFFFFF' }]}>
+              📊 View Web Dashboard
+            </Text>
+          </TouchableOpacity>
+
+          {/* 3. ¡NUEVO BOTÓN PARA FINALIZAR TORNEO! (EN INGLÉS) */}
+          <TouchableOpacity
+            style={[styles.viewTeamsButton, { marginTop: 10, backgroundColor: isArchiving ? '#fca5a5' : '#ef4444' }]} // Color rojo
+            onPress={handleArchiveTournament}
+            disabled={isArchiving}
+          >
+            {isArchiving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={[styles.viewTeamsButtonText, { color: '#FFFFFF' }]}>
+                🛑 Finalize & Archive Tournament
+              </Text>
+            )}
+          </TouchableOpacity>
+
+        </View>
+      )}
     </SafeAreaView>
   );
 }; // Fin OrganizerDashboardScreen

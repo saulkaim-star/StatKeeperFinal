@@ -1,19 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  Button,
-} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { useEffect, useState } from 'react';
+import {
+  Button,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
 const ManagerHomeScreen = ({ navigation }) => {
   const [teamInfo, setTeamInfo] = useState({ id: null, name: 'Loading...' });
-  
+
   // --- ¡CAMBIO 1: Añadir estado para el competitionId! ---
   const [competitionId, setCompetitionId] = useState(null);
 
@@ -23,7 +22,7 @@ const ManagerHomeScreen = ({ navigation }) => {
     const userId = currentUser.uid;
 
     // --- Preparamos el listener para el 'competitionId' ---
-    let compSubscriber = () => {}; 
+    let compSubscriber = () => { };
 
     const subscriber = firestore()
       .collection('teams')
@@ -58,7 +57,7 @@ const ManagerHomeScreen = ({ navigation }) => {
         console.error("Error fetching team:", error);
         setTeamInfo({ id: null, name: 'Error loading team' });
       });
-      
+
     // Limpiamos AMBOS listeners al salir
     return () => {
       subscriber();
@@ -76,50 +75,58 @@ const ManagerHomeScreen = ({ navigation }) => {
         <Text style={styles.title}>Manager Dashboard</Text>
         <Text style={styles.subtitle}>Managing: {teamInfo.name}</Text>
       </View>
-      
+
       <View style={styles.menuContainer}>
         {/* Los otros botones no necesitan el competitionId... */}
-        <TouchableOpacity 
-          style={styles.menuButton} 
+        <TouchableOpacity
+          style={styles.menuButton}
           onPress={() => navigation.navigate('Roster', { teamId: teamInfo.id })}
           disabled={!teamInfo.id}
         >
           <Text style={styles.menuButtonText}>ЁЯСе Manage Roster</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.menuButton} 
+        <TouchableOpacity
+          style={styles.menuButton}
           onPress={() => navigation.navigate('StartGame', { teamId: teamInfo.id })}
           disabled={!teamInfo.id}
         >
           <Text style={styles.menuButtonText}>ЁЯПЯя╕П Start New Game</Text>
         </TouchableOpacity>
-        
+
         {/* --- ¡CAMBIO 3: Pasar el competitionId al 'TeamHub'! --- */}
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={() => navigation.navigate('TeamHub', { 
-            teamId: teamInfo.id, 
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.navigate('TeamHub', {
+            teamId: teamInfo.id,
             teamName: teamInfo.name,
             competitionId: competitionId // <-- ¡Añadido!
           })}
           // Desactivamos el botón si falta el competitionId
-          disabled={!teamInfo.id || !competitionId} 
+          disabled={!teamInfo.id || !competitionId}
         >
           <Text style={styles.menuButtonText}>ЁЯУг Team Hub</Text>
         </TouchableOpacity>
         {/* --- Fin del Cambio 3 --- */}
 
-        <TouchableOpacity 
-          style={styles.menuButton} 
+        <TouchableOpacity
+          style={styles.menuButton}
           onPress={() => navigation.navigate('Stats', { teamId: teamInfo.id, teamName: teamInfo.name })}
           disabled={!teamInfo.id}
         >
           <Text style={styles.menuButtonText}>ЁЯУК Stats & History</Text>
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.logoutContainer}>
         <Button title="Log Out" onPress={handleLogout} color="#ef4444" />
+        <TouchableOpacity
+          style={{ marginTop: 15, alignItems: 'center' }}
+          onPress={handleDeleteAccount}
+        >
+          <Text style={{ color: '#9ca3af', fontSize: 14, textDecorationLine: 'underline' }}>
+            Delete Account
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

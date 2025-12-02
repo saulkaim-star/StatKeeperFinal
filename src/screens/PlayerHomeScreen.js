@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useLayoutEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Button, SafeAreaView, TouchableOpacity, ScrollView, Image, Linking, Alert } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Button, Image, Linking, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { handleDeleteAccount } from '../utils/authUtils';
 
 // --- Pequeños componentes para el Dashboard (Sin cambios) ---
 const NextGame = ({ game, navigation }) => {
@@ -57,7 +58,7 @@ const LatestPoll = ({ poll, teamId, navigation }) => {
             <Text style={styles.cardTitle}>Active Poll</Text>
             <Text style={styles.pollQuestion}>{poll.question}</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Hub', { screen: 'Polls' })}>
-                 <Text style={styles.viewAllText}>View All Polls →</Text>
+                <Text style={styles.viewAllText}>View All Polls →</Text>
             </TouchableOpacity>
         </TouchableOpacity>
     );
@@ -67,313 +68,326 @@ const LatestPoll = ({ poll, teamId, navigation }) => {
 
 // --- Componente Principal ---
 const PlayerHomeScreen = () => {
-  const navigation = useNavigation();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  const [playerStats, setPlayerStats] = useState(null); // <--- Los stats empiezan en null
-  const [teamId, setTeamId] = useState(null); 
-  const [competitionId, setCompetitionId] = useState(null);
-  const [nextGame, setNextGame] = useState(null); 
-  const [recentAnnouncements, setRecentAnnouncements] = useState([]);
-  const [latestPoll, setLatestPoll] = useState(null);
-  const [playerName, setPlayerName] = useState('Player');
-  const [playerNumber, setPlayerNumber] = useState(null);
-  const [playerPosition, setPlayerPosition] = useState(null);
-  const [photoURL, setPhotoURL] = useState(null);
-  const [playerRosterId, setPlayerRosterId] = useState(null); 
+    const navigation = useNavigation();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-  const handleLogout = () => { auth().signOut(); };
+    const [playerStats, setPlayerStats] = useState(null); // <--- Los stats empiezan en null
+    const [teamId, setTeamId] = useState(null);
+    const [competitionId, setCompetitionId] = useState(null);
+    const [nextGame, setNextGame] = useState(null);
+    const [recentAnnouncements, setRecentAnnouncements] = useState([]);
+    const [latestPoll, setLatestPoll] = useState(null);
+    const [playerName, setPlayerName] = useState('Player');
+    const [playerNumber, setPlayerNumber] = useState(null);
+    const [playerPosition, setPlayerPosition] = useState(null);
+    const [photoURL, setPhotoURL] = useState(null);
+    const [playerRosterId, setPlayerRosterId] = useState(null);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => ( <Button onPress={handleLogout} title="Log Out" color="#ef4444" /> ),
-    });
-  }, [navigation]);
+    const handleLogout = () => { auth().signOut(); };
 
-  // --- LÓGICA DE LISTENERS ---
-  useEffect(() => {
-    const currentUser = auth().currentUser;
-    if (!currentUser) {
-        setError("Authentication error.");
-        setLoading(false);
-        return;
-    }
-
-    const userSubscriber = firestore().collection('users').doc(currentUser.uid)
-      .onSnapshot(userDoc => {
-        if (!userDoc.exists) {
-            setError("User profile does not exist.");
-            setLoading(false);
-            return;
-        }
-        
-        const userData = userDoc.data();
-        const currentTeamId = userData.teams?.[0] || userData.teamId;
-        
-        if (!currentTeamId) {
-            setError("User is not associated with any team.");
-            setLoading(false);
-            return;
-        }
-        
-        setTeamId(currentTeamId);
-
-      }, err => {
-        console.error("Error fetching user profile:", err);
-        setError(err.message);
-        setLoading(false);
-      });
-
-    return () => userSubscriber();
-  }, []);
-
-
-  useEffect(() => {
-    if (!teamId) return; 
-
-    const currentUser = auth().currentUser;
-    if (!currentUser) return;
-
-    const rosterSubscriber = firestore().collection('teams').doc(teamId).collection('roster')
-      .where('userId', '==', currentUser.uid).limit(1)
-      .onSnapshot(rosterSnap => {
-        if (!rosterSnap.empty) {
-            const rosterDoc = rosterSnap.docs[0];
-            const rosterData = rosterDoc.data();
-            
-            setPlayerRosterId(rosterDoc.id); 
-            setPlayerName(rosterData.playerName || rosterData.name || 'Player');
-            setPlayerNumber(rosterData.playerNumber || null);
-            setPlayerPosition(rosterData.playerPosition || null);
-            setPhotoURL(rosterData.photoURL || null);
-            
-            // --- ¡¡¡CORRECCIÓN APLICADA!!! ---
-            // El bloque que calculaba stats desde el roster (poniéndolos a 0)
-            // ha sido eliminado de aquí.
-            // --- FIN DE LA CORRECCIÓN ---
-            
-            setLoading(false); 
-            
-        } else {
-            console.warn("User is in team but has no roster doc.");
-            setLoading(false);
-        }
-      }, err => console.error("Error fetching roster:", err));
-
-    const announcementSubscriber = firestore().collection('teams').doc(teamId).collection('announcements')
-      .orderBy('createdAt', 'desc').limit(2)
-      .onSnapshot(snap => {
-        if (!snap.empty) setRecentAnnouncements(snap.docs.map(d => ({id: d.id, ...d.data()})));
-      }, err => console.error("Error fetching announcements:", err));
-
-    const pollSubscriber = firestore().collection('teams').doc(teamId).collection('polls')
-      .orderBy('createdAt', 'desc').limit(1)
-      .onSnapshot(snap => {
-        if (!snap.empty) setLatestPoll({ id: snap.docs[0].id, ...snap.docs[0].data() });
-        else setLatestPoll(null);
-      }, err => console.error("Error fetching polls:", err));
-
-    const compTeamSubscriber = firestore().collection('competition_teams')
-      .where('teamId', '==', teamId).limit(1)
-      .onSnapshot(snap => {
-        if (!snap.empty) {
-            const compId = snap.docs[0].data().competitionId;
-            setCompetitionId(compId); 
-        } else {
-            setCompetitionId(null); 
-        }
-      }, err => console.error("Error fetching competition link:", err));
-
-    return () => {
-      rosterSubscriber();
-      announcementSubscriber();
-      pollSubscriber();
-      compTeamSubscriber();
-    };
-  }, [teamId]);
-
-
-  useEffect(() => {
-    if (!competitionId || !teamId || !playerRosterId) {
-        setNextGame(null);
-        // Si no hay competición, inicializamos los stats a 0
-        setPlayerStats({ avg: '.000', hits: 0, ab: 0, homeruns: 0, walks: 0, k: 0 });
-        return;
-    }
-    
-    const currentUser = auth().currentUser;
-    if (!currentUser) return;
-    
-    const now = firestore.Timestamp.now();
-    let nextHomeListener = () => {};
-    let nextAwayListener = () => {};
-    let nextHomeGame = null;
-    let nextAwayGame = null;
-
-    const findEarliestGame = () => {
-        if (nextHomeGame && nextAwayGame) { setNextGame(nextHomeGame.gameDate.toDate() < nextAwayGame.gameDate.toDate() ? nextHomeGame : nextAwayGame); } 
-        else { setNextGame(nextHomeGame || nextAwayGame); }
-    };
-    
-    const homeQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('homeTeamId', '==', teamId).where('status', '==', 'scheduled').where('gameDate', '>=', now).orderBy('gameDate', 'asc').limit(1);
-    const awayQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('awayTeamId', '==', teamId).where('status', '==', 'scheduled').where('gameDate', '>=', now).orderBy('gameDate', 'asc').limit(1);
-
-    nextHomeListener = homeQuery.onSnapshot(snapshot => {
-        if (!snapshot.empty) { const game = snapshot.docs[0].data(); nextHomeGame = { ...game, id: snapshot.docs[0].id, opponentName: game.awayTeamName, isHome: true }; } 
-        else { nextHomeGame = null; }
-        findEarliestGame();
-    }, error => console.error("Error fetching next home game:", error));
-    
-    nextAwayListener = awayQuery.onSnapshot(snapshot => {
-        if (!snapshot.empty) { const game = snapshot.docs[0].data(); nextAwayGame = { ...game, id: snapshot.docs[0].id, opponentName: game.homeTeamName, isHome: false }; } 
-        else { nextAwayGame = null; }
-        findEarliestGame();
-    }, error => console.error("Error fetching next away game:", error));
-
-    // Esta es la lógica que calcula los stats desde los juegos
-    const calculateLeagueStats = (games) => {
-        const stats = { ab: 0, hits: 0, doubles: 0, triples: 0, homeruns: 0, walks: 0, k: 0 };
-        
-        games.forEach(game => {
-            const isHome = game.homeTeamId === teamId;
-            const boxScore = isHome ? game.homeBoxScore : game.awayBoxScore;
-            if (boxScore && Array.isArray(boxScore)) {
-                let playerStat = boxScore.find(p => p.id === playerRosterId);
-                if (!playerStat) {
-                    playerStat = boxScore.find(p => p.playerName === playerName || p.name === playerName);
-                }
-
-                if (playerStat) {
-                    stats.ab += (playerStat.game_ab || 0);
-                    stats.hits += (playerStat.game_hits || 0);
-                    stats.doubles += (playerStat.game_doubles || 0);
-                    stats.triples += (playerStat.game_triples || 0);
-                    stats.homeruns += (playerStat.game_homeruns || 0);
-                    stats.walks += (playerStat.game_walks || 0);
-                    stats.k += (playerStat.game_k || 0);
-                }
-            }
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerRight: () => (<Button onPress={handleLogout} title="Log Out" color="#ef4444" />),
         });
-        const avg = stats.ab > 0 ? (stats.hits / stats.ab).toFixed(3).replace(/^0/, '') : '.000';
-        setPlayerStats({ ...stats, avg });
-    };
+    }, [navigation]);
 
-    const homeGamesQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('homeTeamId', '==', teamId).where('status', '==', 'completed');
-    const awayGamesQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('awayTeamId', '==', teamId).where('status', '==', 'completed');
-
-    let homeStatsListener = () => {};
-    let awayStatsListener = () => {};
-    let homeGamesData = [];
-    let awayGamesData = [];
-
-    homeStatsListener = homeGamesQuery.onSnapshot(snap => {
-        homeGamesData = snap.docs.map(doc => doc.data());
-        calculateLeagueStats([...homeGamesData, ...awayGamesData]);
-    }, err => console.error("Error fetching home league stats:", err));
-
-    awayStatsListener = awayGamesQuery.onSnapshot(snap => {
-        awayGamesData = snap.docs.map(doc => doc.data());
-        calculateLeagueStats([...homeGamesData, ...awayGamesData]);
-    }, err => console.error("Error fetching away league stats:", err));
-
-
-    return () => {
-        nextHomeListener();
-        nextAwayListener();
-        homeStatsListener();
-        awayStatsListener();
-    };
-  }, [competitionId, teamId, playerRosterId, playerName]); 
-  
-  // --- FIN DE LA LÓGICA DE LISTENERS ---
-  
-  // --- Función para el Botón Web (Sin cambios) ---
-  const handleOpenWebDashboard = async () => {
-    if (!competitionId) {
-        Alert.alert("Error", "Cannot open web dashboard. You are not in a competition.");
-        return;
-    }
-    const vercelURL = 'https://statkeeper-liga-webbaseball.vercel.app';
-    const webDashboardUrl = `${vercelURL}/liga/${competitionId}`;
-
-    try {
-        const supported = await Linking.canOpenURL(webDashboardUrl);
-        if (supported) {
-            await Linking.openURL(webDashboardUrl);
-        } else {
-            Alert.alert("Error", `Don't know how to open this URL: ${webDashboardUrl}`);
+    // --- LÓGICA DE LISTENERS ---
+    useEffect(() => {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+            setError("Authentication error.");
+            setLoading(false);
+            return;
         }
-    } catch (err) {
-        console.error("Failed to open web URL:", err);
-        Alert.alert("Error", "Failed to open the link.");
+
+        const userSubscriber = firestore().collection('users').doc(currentUser.uid)
+            .onSnapshot(userDoc => {
+                if (!userDoc.exists) {
+                    setError("User profile does not exist.");
+                    setLoading(false);
+                    return;
+                }
+
+                const userData = userDoc.data();
+                const currentTeamId = userData.teams?.[0] || userData.teamId;
+
+                if (!currentTeamId) {
+                    setError("User is not associated with any team.");
+                    setLoading(false);
+                    return;
+                }
+
+                setTeamId(currentTeamId);
+
+            }, err => {
+                console.error("Error fetching user profile:", err);
+                setError(err.message);
+                setLoading(false);
+            });
+
+        return () => userSubscriber();
+    }, []);
+
+
+    useEffect(() => {
+        if (!teamId) return;
+
+        const currentUser = auth().currentUser;
+        if (!currentUser) return;
+
+        const rosterSubscriber = firestore().collection('teams').doc(teamId).collection('roster')
+            .where('userId', '==', currentUser.uid).limit(1)
+            .onSnapshot(rosterSnap => {
+                if (!rosterSnap.empty) {
+                    const rosterDoc = rosterSnap.docs[0];
+                    const rosterData = rosterDoc.data();
+
+                    setPlayerRosterId(rosterDoc.id);
+                    setPlayerName(rosterData.playerName || rosterData.name || 'Player');
+                    setPlayerNumber(rosterData.playerNumber || null);
+                    setPlayerPosition(rosterData.playerPosition || null);
+                    setPhotoURL(rosterData.photoURL || null);
+
+                    // --- ¡¡¡CORRECCIÓN APLICADA!!! ---
+                    // El bloque que calculaba stats desde el roster (poniéndolos a 0)
+                    // ha sido eliminado de aquí.
+                    // --- FIN DE LA CORRECCIÓN ---
+
+                    setLoading(false);
+
+                } else {
+                    console.warn("User is in team but has no roster doc.");
+                    setLoading(false);
+                }
+            }, err => console.error("Error fetching roster:", err));
+
+        const announcementSubscriber = firestore().collection('teams').doc(teamId).collection('announcements')
+            .orderBy('createdAt', 'desc').limit(2)
+            .onSnapshot(snap => {
+                if (!snap.empty) setRecentAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            }, err => console.error("Error fetching announcements:", err));
+
+        const pollSubscriber = firestore().collection('teams').doc(teamId).collection('polls')
+            .orderBy('createdAt', 'desc').limit(1)
+            .onSnapshot(snap => {
+                if (!snap.empty) setLatestPoll({ id: snap.docs[0].id, ...snap.docs[0].data() });
+                else setLatestPoll(null);
+            }, err => console.error("Error fetching polls:", err));
+
+        const compTeamSubscriber = firestore().collection('competition_teams')
+            .where('teamId', '==', teamId).limit(1)
+            .onSnapshot(snap => {
+                if (!snap.empty) {
+                    const compId = snap.docs[0].data().competitionId;
+                    setCompetitionId(compId);
+                } else {
+                    setCompetitionId(null);
+                }
+            }, err => console.error("Error fetching competition link:", err));
+
+        return () => {
+            rosterSubscriber();
+            announcementSubscriber();
+            pollSubscriber();
+            compTeamSubscriber();
+        };
+    }, [teamId]);
+
+
+    useEffect(() => {
+        if (!competitionId || !teamId || !playerRosterId) {
+            setNextGame(null);
+            // Si no hay competición, inicializamos los stats a 0
+            setPlayerStats({ avg: '.000', hits: 0, ab: 0, homeruns: 0, walks: 0, k: 0 });
+            return;
+        }
+
+        const currentUser = auth().currentUser;
+        if (!currentUser) return;
+
+        const now = firestore.Timestamp.now();
+        let nextHomeListener = () => { };
+        let nextAwayListener = () => { };
+        let nextHomeGame = null;
+        let nextAwayGame = null;
+
+        const findEarliestGame = () => {
+            if (nextHomeGame && nextAwayGame) { setNextGame(nextHomeGame.gameDate.toDate() < nextAwayGame.gameDate.toDate() ? nextHomeGame : nextAwayGame); }
+            else { setNextGame(nextHomeGame || nextAwayGame); }
+        };
+
+        const homeQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('homeTeamId', '==', teamId).where('status', '==', 'scheduled').where('gameDate', '>=', now).orderBy('gameDate', 'asc').limit(1);
+        const awayQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('awayTeamId', '==', teamId).where('status', '==', 'scheduled').where('gameDate', '>=', now).orderBy('gameDate', 'asc').limit(1);
+
+        nextHomeListener = homeQuery.onSnapshot(snapshot => {
+            if (!snapshot.empty) { const game = snapshot.docs[0].data(); nextHomeGame = { ...game, id: snapshot.docs[0].id, opponentName: game.awayTeamName, isHome: true }; }
+            else { nextHomeGame = null; }
+            findEarliestGame();
+        }, error => console.error("Error fetching next home game:", error));
+
+        nextAwayListener = awayQuery.onSnapshot(snapshot => {
+            if (!snapshot.empty) { const game = snapshot.docs[0].data(); nextAwayGame = { ...game, id: snapshot.docs[0].id, opponentName: game.homeTeamName, isHome: false }; }
+            else { nextAwayGame = null; }
+            findEarliestGame();
+        }, error => console.error("Error fetching next away game:", error));
+
+        // Esta es la lógica que calcula los stats desde los juegos
+        const calculateLeagueStats = (games) => {
+            const stats = { ab: 0, hits: 0, doubles: 0, triples: 0, homeruns: 0, walks: 0, k: 0 };
+
+            games.forEach(game => {
+                const isHome = game.homeTeamId === teamId;
+                const boxScore = isHome ? game.homeBoxScore : game.awayBoxScore;
+                if (boxScore && Array.isArray(boxScore)) {
+                    let playerStat = boxScore.find(p => p.id === playerRosterId);
+                    if (!playerStat) {
+                        playerStat = boxScore.find(p => p.playerName === playerName || p.name === playerName);
+                    }
+
+                    if (playerStat) {
+                        stats.ab += (playerStat.game_ab || 0);
+                        stats.hits += (playerStat.game_hits || 0);
+                        stats.doubles += (playerStat.game_doubles || 0);
+                        stats.triples += (playerStat.game_triples || 0);
+                        stats.homeruns += (playerStat.game_homeruns || 0);
+                        stats.walks += (playerStat.game_walks || 0);
+                        stats.k += (playerStat.game_k || 0);
+                    }
+                }
+            });
+            const avg = stats.ab > 0 ? (stats.hits / stats.ab).toFixed(3).replace(/^0/, '') : '.000';
+            setPlayerStats({ ...stats, avg });
+        };
+
+        const homeGamesQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('homeTeamId', '==', teamId).where('status', '==', 'completed');
+        const awayGamesQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('awayTeamId', '==', teamId).where('status', '==', 'completed');
+
+        let homeStatsListener = () => { };
+        let awayStatsListener = () => { };
+        let homeGamesData = [];
+        let awayGamesData = [];
+
+        homeStatsListener = homeGamesQuery.onSnapshot(snap => {
+            homeGamesData = snap.docs.map(doc => doc.data());
+            calculateLeagueStats([...homeGamesData, ...awayGamesData]);
+        }, err => console.error("Error fetching home league stats:", err));
+
+        awayStatsListener = awayGamesQuery.onSnapshot(snap => {
+            awayGamesData = snap.docs.map(doc => doc.data());
+            calculateLeagueStats([...homeGamesData, ...awayGamesData]);
+        }, err => console.error("Error fetching away league stats:", err));
+
+
+        return () => {
+            nextHomeListener();
+            nextAwayListener();
+            homeStatsListener();
+            awayStatsListener();
+        };
+    }, [competitionId, teamId, playerRosterId, playerName]);
+
+    // --- FIN DE LA LÓGICA DE LISTENERS ---
+
+    // --- Función para el Botón Web (Sin cambios) ---
+    const handleOpenWebDashboard = async () => {
+        if (!competitionId) {
+            Alert.alert("Error", "Cannot open web dashboard. You are not in a competition.");
+            return;
+        }
+        const vercelURL = 'https://statkeeper-liga-webbaseball.vercel.app';
+        const webDashboardUrl = `${vercelURL}/liga/${competitionId}`;
+
+        try {
+            const supported = await Linking.canOpenURL(webDashboardUrl);
+            if (supported) {
+                await Linking.openURL(webDashboardUrl);
+            } else {
+                Alert.alert("Error", `Don't know how to open this URL: ${webDashboardUrl}`);
+            }
+        } catch (err) {
+            console.error("Failed to open web URL:", err);
+            Alert.alert("Error", "Failed to open the link.");
+        }
+    };
+
+
+    if (loading) {
+        return <View style={styles.center}><ActivityIndicator size="large" color="#3b82f6" /></View>;
     }
-  };
+    if (error) {
+        return <View style={styles.center}><Text style={{ color: 'red' }}>{error}</Text></View>;
+    }
 
+    return (
+        <SafeAreaView style={styles.container}>
+            <ScrollView style={{ flex: 1 }}>
 
-  if (loading) {
-    return <View style={styles.center}><ActivityIndicator size="large" color="#3b82f6" /></View>;
-  }
-  if (error) {
-    return <View style={styles.center}><Text style={{color: 'red'}}>{error}</Text></View>;
-  }
-
-  return (
-    <SafeAreaView style={styles.container}>
-        <ScrollView style={{flex: 1}}>
-            
-            {/* --- Cabecera del Perfil --- */}
-            <View style={styles.profileHeader}>
-                {photoURL ? (
-                    <Image source={{ uri: photoURL }} style={styles.photo} />
-                ) : (
-                    <View style={styles.photoPlaceholder}>
-                        <Text style={styles.photoPlaceholderText}>👤</Text>
-                    </View>
-                )}
-                <View style={styles.profileInfo}>
-                    <Text style={styles.playerName}>{playerName}</Text>
-                    {(playerNumber || playerPosition) && (
-                        <Text style={styles.teamInfo}>
-                            {playerNumber ? `#${playerNumber}` : ''}
-                            {playerNumber && playerPosition ? '  •  ' : ''}
-                            {playerPosition || ''}
-                        </Text>
+                {/* --- Cabecera del Perfil --- */}
+                <View style={styles.profileHeader}>
+                    {photoURL ? (
+                        <Image source={{ uri: photoURL }} style={styles.photo} />
+                    ) : (
+                        <View style={styles.photoPlaceholder}>
+                            <Text style={styles.photoPlaceholderText}>👤</Text>
+                        </View>
                     )}
+                    <View style={styles.profileInfo}>
+                        <Text style={styles.playerName}>{playerName}</Text>
+                        {(playerNumber || playerPosition) && (
+                            <Text style={styles.teamInfo}>
+                                {playerNumber ? `#${playerNumber}` : ''}
+                                {playerNumber && playerPosition ? '  •  ' : ''}
+                                {playerPosition || ''}
+                            </Text>
+                        )}
+                    </View>
+                    <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditPlayerProfile')}>
+                        <Text style={styles.editButtonText}>✏️</Text>
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditPlayerProfile')}>
-                    <Text style={styles.editButtonText}>✏️</Text>
-                </TouchableOpacity>
-            </View>
-            
 
-            {/* --- Estadísticas --- */}
-            {playerStats ? (
-            <>
-                <Text style={styles.sectionTitle}>Season Stats</Text>
-                <View style={styles.statsGrid}>
-                    <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.avg}</Text><Text style={styles.statLabel}>AVG</Text></View>
-                    <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.hits}</Text><Text style={styles.statLabel}>H</Text></View>
-                    <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.ab}</Text><Text style={styles.statLabel}>AB</Text></View>
-                    <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.homeruns}</Text><Text style={styles.statLabel}>HR</Text></View>
-                    <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.walks}</Text><Text style={styles.statLabel}>BB</Text></View>
-                    <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.k}</Text><Text style={styles.statLabel}>K</Text></View>
+
+                {/* --- Estadísticas --- */}
+                {playerStats ? (
+                    <>
+                        <Text style={styles.sectionTitle}>Season Stats</Text>
+                        <View style={styles.statsGrid}>
+                            <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.avg}</Text><Text style={styles.statLabel}>AVG</Text></View>
+                            <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.hits}</Text><Text style={styles.statLabel}>H</Text></View>
+                            <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.ab}</Text><Text style={styles.statLabel}>AB</Text></View>
+                            <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.homeruns}</Text><Text style={styles.statLabel}>HR</Text></View>
+                            <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.walks}</Text><Text style={styles.statLabel}>BB</Text></View>
+                            <View style={styles.statBox}><Text style={styles.statValue}>{playerStats.k}</Text><Text style={styles.statLabel}>K</Text></View>
+                        </View>
+                    </>
+                ) : (
+                    <View style={styles.center}><ActivityIndicator size="small" color="#3b82f6" /></View>
+                )}
+
+                {/* --- Tarjetas de Dashboard --- */}
+                <NextGame game={nextGame} navigation={navigation} />
+                <RecentAnnouncements announcements={recentAnnouncements} navigation={navigation} />
+                <LatestPoll poll={latestPoll} teamId={teamId} navigation={navigation} />
+
+                <View style={{ height: 10 }} />
+
+                {/* --- BOTÓN DENTRO DEL SCROLLVIEW --- */}
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{ backgroundColor: '#ef4444', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, marginTop: 10 }}
+                        onPress={handleDeleteAccount}
+                    >
+                        <Text style={{ color: 'white', fontWeight: '600', fontSize: 14 }}>
+                            Delete Account
+                        </Text>
+                    </TouchableOpacity>
                 </View>
-            </>
-            ) : (
-             <View style={styles.center}><ActivityIndicator size="small" color="#3b82f6" /></View>
-            )}
 
-            {/* --- Tarjetas de Dashboard --- */}
-            <NextGame game={nextGame} navigation={navigation} />
-            <RecentAnnouncements announcements={recentAnnouncements} navigation={navigation} />
-            <LatestPoll poll={latestPoll} teamId={teamId} navigation={navigation} />
+            </ScrollView>
 
-            <View style={{ height: 10 }} />
-        </ScrollView>
-        
-    </SafeAreaView>
-  );
+        </SafeAreaView>
+    );
 };
 
 // --- Estilos (Sin cambios) ---
@@ -411,14 +425,14 @@ const styles = StyleSheet.create({
         marginLeft: 15,
         justifyContent: 'center',
     },
-    playerName: { 
+    playerName: {
         fontSize: 24,
-        fontWeight: 'bold', 
-        color: '#1f2937', 
+        fontWeight: 'bold',
+        color: '#1f2937',
     },
-    teamInfo: { 
-        fontSize: 16, 
-        color: '#6b7280', 
+    teamInfo: {
+        fontSize: 16,
+        color: '#6b7280',
         marginTop: 4,
     },
     editButton: {
@@ -430,9 +444,9 @@ const styles = StyleSheet.create({
         fontSize: 20,
     },
     sectionTitle: {
-        fontSize: 16, 
-        color: '#6b7280', 
-        textAlign: 'center', 
+        fontSize: 16,
+        color: '#6b7280',
+        textAlign: 'center',
         marginBottom: 15,
         marginTop: 10,
         fontWeight: '600',
@@ -449,10 +463,10 @@ const styles = StyleSheet.create({
     announcementText: { fontSize: 14, color: '#374151', marginBottom: 5 },
     pollQuestion: { fontSize: 16, fontWeight: '500', color: '#111827' },
     viewAllText: { fontSize: 14, color: '#3b82f6', fontWeight: 'bold', textAlign: 'right', marginTop: 10 },
-    locationText: { fontSize: 14, fontWeight: 'normal', color: 'gray' }, 
+    locationText: { fontSize: 14, fontWeight: 'normal', color: 'gray' },
 
     webButton: {
-        backgroundColor: '#10B981', 
+        backgroundColor: '#10B981',
         paddingVertical: 10,
         borderRadius: 8,
         alignItems: 'center',
@@ -463,13 +477,13 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
 
-    infoCard: { 
-        backgroundColor: 'white', 
-        paddingVertical: 15, 
-        paddingHorizontal: 20, 
-        borderTopWidth: 1, 
+    infoCard: {
+        backgroundColor: 'white',
+        paddingVertical: 15,
+        paddingHorizontal: 20,
+        borderTopWidth: 1,
         borderTopColor: '#e5e7eb',
-        paddingBottom: 25 
+        paddingBottom: 25
     },
 });
 
