@@ -1,6 +1,7 @@
-import React, { useLayoutEffect, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Button, ActivityIndicator, SafeAreaView, TouchableOpacity, Alert } from 'react-native';
 import firestore from '@react-native-firebase/firestore';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const AnnouncementItem = ({ item, onDelete, isPlayerView }) => (
   <View style={styles.itemContainer}>
@@ -34,8 +35,8 @@ const AnnouncementsScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (!teamId) {
-        setLoading(false);
-        return;
+      setLoading(false);
+      return;
     }
     const subscriber = firestore()
       .collection('teams').doc(teamId).collection('announcements')
@@ -84,11 +85,11 @@ const AnnouncementsScreen = ({ route, navigation }) => {
       <FlatList
         data={announcements}
         renderItem={({ item }) => (
-            <AnnouncementItem 
-                item={item} 
-                isPlayerView={isPlayerView}
-                onDelete={() => handleDeleteAnnouncement(item.id)} 
-            />
+          <AnnouncementItem
+            item={item}
+            isPlayerView={isPlayerView}
+            onDelete={() => handleDeleteAnnouncement(item.id)}
+          />
         )}
         keyExtractor={item => item.id}
         ListEmptyComponent={<Text style={styles.emptyText}>No announcements yet.</Text>}

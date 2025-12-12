@@ -1,13 +1,13 @@
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   Alert,
   FlatList,
+  StyleSheet,
+  Text,
   TouchableOpacity,
-  SafeAreaView, // <-- Asegúrate que SafeAreaView esté importado
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 // import { SafeAreaView } from 'react-native-safe-area-context'; // <-- O usa esta
 import firestore from '@react-native-firebase/firestore';
 

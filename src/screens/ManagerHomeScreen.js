@@ -3,12 +3,14 @@ import firestore from '@react-native-firebase/firestore';
 import { useEffect, useState } from 'react';
 import {
   Button,
-  SafeAreaView,
+
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const ManagerHomeScreen = ({ navigation }) => {
   const [teamInfo, setTeamInfo] = useState({ id: null, name: 'Loading...' });

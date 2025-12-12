@@ -1,6 +1,7 @@
 import firestore from '@react-native-firebase/firestore';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // --- Tarjetas de Resumen ---
 const CommunityPostsCard = ({ navigation, teamId, competitionId }) => {
@@ -50,6 +51,22 @@ const PollsCard = ({ navigation, teamId }) => {
         Create and manage team polls and votes.
       </Text>
       <Text style={styles.viewAllText}>Manage Polls →</Text>
+    </TouchableOpacity>
+  );
+};
+
+const CalendarCard = ({ navigation, teamId }) => {
+  return (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => navigation.navigate('Calendar', { teamId, isPlayerView: false })}
+      disabled={!teamId}
+    >
+      <Text style={styles.cardTitle}>🗓️ Team Calendar</Text>
+      <Text style={styles.communityPostText}>
+        View all upcoming and past games and events.
+      </Text>
+      <Text style={styles.viewAllText}>View Calendar →</Text>
     </TouchableOpacity>
   );
 };
@@ -149,6 +166,8 @@ const TeamHubScreen = ({ route, navigation }) => {
             teamId={teamId}
             competitionId={competitionId}
           />
+
+          <CalendarCard navigation={navigation} teamId={teamId} />
 
           <PollsCard navigation={navigation} teamId={teamId} />
 

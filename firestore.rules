@@ -1,0 +1,170 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- NUEVA REGLA GLOBAL PARA COLLECTION GROUP QUERIES (SOLUCIÓN AL ERROR) ---
+    // Esta regla permite consultas 'collectionGroup' en 'roster' desde cualquier parte de la BD.
+    // Sin esta regla recursiva, las consultas collectionGroup fallan con 'permission-denied'.
+    match /{path=**}/roster/{docId} {
+      allow read: if true;
+    }
+
+    // --- REGLA PARA USUARIOS (CORREGIDA) ---
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId &&
+                      request.resource.data.diff(resource.data).affectedKeys()
+                        // Permitimos 'teams', 'role' y 'competitionId'
+                        .hasOnly(['displayName', 'photoURL', 'playerPosition', 'playerNumber', 'fcmToken', 'teams', 'role', 'competitionId']);
+      allow delete: if false;
+    }
+    
+    // --- REGLA DE LECTURA INTERNA (¡LA SOLUCIÓN!) ---
+    match /users/{userId} {
+      allow get: if request.auth.uid != null;
+    }
+
+    // --- REGLA PARA EQUIPOS --- (MODIFICADO PARA LA WEB)
+    match /teams/{teamId} {
+      allow get, list: if true;
+      allow create: if request.auth.uid != null;
+      allow read: if request.auth.uid != null && resource.data.managerId == request.auth.uid;
+      allow update, delete: if request.auth.uid != null && resource.data.managerId == request.auth.uid;
+    }
+
+    // --- REGLAS PARA COMPETICIONES --- 
+    match /competitions/{competitionId} {
+      allow get, list: if true;
+      allow create: if request.auth.uid != null &&
+                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Organización';
+      allow update, delete: if request.auth.uid != null &&
+                              resource.data.organizerId == request.auth.uid;
+    }
+
+    // --- REGLAS PARA competition_teams ---
+    match /competition_teams/{docId} {
+      allow get, list: if true;
+      allow create: if request.auth.uid != null &&
+                      request.resource.data.managerId == request.auth.uid;
+      allow delete: if request.auth.uid != null &&
+                      (resource.data.managerId == request.auth.uid ||
+                       get(/databases/$(database)/documents/competitions/$(resource.data.competitionId)).data.organizerId == request.auth.uid);
+    }
+
+    // --- REGLAS PARA competition_games ---
+    match /competition_games/{gameId} {
+      allow get, list: if true;
+      allow create: if request.auth.uid != null &&
+                       get(/databases/$(database)/documents/competitions/$(request.resource.data.competitionId)).data.organizerId == request.auth.uid;
+      allow update: if request.auth.uid != null &&
+                       (
+                         get(/databases/$(database)/documents/competitions/$(resource.data.competitionId)).data.organizerId == request.auth.uid
+                         ||
+                         get(/databases/$(database)/documents/teams/$(resource.data.homeTeamId)).data.managerId == request.auth.uid
+                         ||
+                         get(/databases/$(database)/documents/teams/$(resource.data.awayTeamId)).data.managerId == request.auth.uid
+                       );
+      allow delete: if request.auth.uid != null &&
+                        get(/databases/$(database)/documents/competitions/$(resource.data.competitionId)).data.organizerId == request.auth.uid;
+    }
+    
+    // --- ¡NUEVA REGLA PARA MEDIA POSTS (SHORTS)!
+    match /mediaPosts/{postId} {
+      
+      allow read: if true; 
+
+      allow create: if request.auth.uid != null &&
+                      request.auth.uid == request.resource.data.userId &&
+                      (
+                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teams.hasAny([request.resource.data.teamId])
+                        ||
+                        get(/databases/$(database)/documents/teams/$(request.resource.data.teamId)).data.managerId == request.auth.uid
+                      );
+      allow update: if request.auth.uid != null && 
+                    request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['likes', 'comments']);
+      
+      allow delete: if request.auth.uid != null &&
+                      (
+                        resource.data.userId == request.auth.uid 
+                        ||
+                        get(/databases/$(database)/documents/teams/$(resource.data.teamId)).data.managerId == request.auth.uid
+                      );
+
+      // --- ¡AQUÍ ESTÁ LA CLAVE! REGLA PARA COMENTARIOS ---
+      match /comments/{commentId} {
+        allow read: if true; 
+        allow create: if request.auth != null; 
+      }
+    }
+
+    // --- NUEVA REGLA PARA ANUNCIOS (ESPECÍFICA) ---
+    match /teams/{teamId}/announcements/{announcementId} {
+      
+      // 1. LEER: Permitido para Manager O cualquier jugador del equipo.
+      allow read: if request.auth.uid != null &&
+                   (get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid 
+                    ||
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teams.hasAny([teamId]));
+      
+      // 2. ESCRIBIR/BORRAR: Permitido SOLO al Manager (La corrección).
+      allow create, update, delete: if request.auth.uid != null &&
+                                    get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid;
+    }
+ 
+    // --- REGLA PARA ROSTER ---
+    match /teams/{teamId}/roster/{playerId} {
+      allow get, list: if true;
+      allow write: if (
+                    // Opción 1: Eres el Mánager
+                    get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid
+                   )
+                   ||
+                   (
+                    // Opción 2: Eres un jugador reclamando un puesto
+                    request.resource.data.userId == request.auth.uid && 
+                    (!('userId' in resource.data) || resource.data.userId == null)
+                   )
+                   ||
+                   (
+                    // Opción 3: Eres un jugador editando su propio perfil
+                    resource.data.userId == request.auth.uid &&
+                    request.auth.uid == request.resource.data.userId &&
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['playerNumber', 'playerPosition', 'photoURL'])
+                   );
+    }
+
+    // --- REGLA PARA ENCUESTAS (POLLS) ---
+    match /teams/{teamId}/polls/{pollId} {
+      
+      // LEER: El mánager o un jugador del equipo
+      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teams.hasAny([teamId])
+                  ||
+                  get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid;
+                  
+      // CREAR y BORRAR: Solo el mánager
+      allow create, delete: if get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid;
+      // ACTUALIZAR (VOTAR): 
+      allow update: if (
+                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teams.hasAny([teamId])
+                       ||
+                       get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid)
+                       &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
+                    );
+    }
+
+    // --- REGLA GENÉRICA PARA OTRAS SUBCOLECCIONES (Games, Events, etc.) ---
+    match /teams/{teamId}/{subcollection}/{docId} {
+      allow read: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.teams.hasAny([teamId])
+                  || get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid;
+      allow write: if get(/databases/$(database)/documents/teams/$(teamId)).data.managerId == request.auth.uid;
+    }
+    
+    // --- NUEVA REGLA DE SEGURIDAD (CATCH-ALL) ---
+    match /{document=**} {
+      allow read, write: if false
+    }
+  }
+}

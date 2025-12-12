@@ -1,15 +1,15 @@
-import React from 'react';
-import {
-  SafeAreaView,
-  View,
-  Text,
-  TouchableOpacity, // Asegúrate que esté importado
-  StyleSheet,
-  Alert,
-  Button,
-} from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import React from 'react';
+import {
+  Alert,
+  Button, // Asegúrate que esté importado
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const RoleSelectScreen = ({ navigation }) => {
   // Función genérica para actualizar el rol y navegar

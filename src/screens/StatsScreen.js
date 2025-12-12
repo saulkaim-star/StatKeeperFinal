@@ -2,7 +2,9 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Button, FlatList, Linking, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, FlatList, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Share from 'react-native-share'; // <--- Importación añadida
 import ViewShot from "react-native-view-shot";
 import { handleDeleteAccount } from '../utils/authUtils';
 
@@ -501,11 +503,77 @@ const StatsScreen = ({ route }) => {
     // --- FIN DE LA NUEVA FUNCIÓN ---
 
 
-    // --- Funciones (handleShare, etc.) (Sin cambios) ---
-    const handleShare = async (ref) => { /* ... (código idéntico) ... */ };
-    const handleDeleteGame = (gameId, opponentName) => { /* ... (código idéntico) ... */ };
+    // --- Funciones (handleShare, etc.) (RESTAURADA) ---
+    const handleShare = async (ref) => {
+        try {
+            const uri = await ref.current.capture();
+            const options = {
+                title: 'Share Stats',
+                message: `Check out these stats from ${teamName} in StatKeeper!`,
+                url: uri,
+                type: 'image/png',
+            };
+            await Share.open(options);
+        } catch (error) {
+            console.error("Error sharing stats:", error);
+            // No alertar si el usuario canceló
+            if (error.message !== 'User did not share') {
+                Alert.alert("Error", "Could not share stats.");
+            }
+        }
+    };
+
+    const handleDeleteGame = (gameId, opponentName) => {
+        Alert.alert(
+            "Delete Game",
+            `Are you sure you want to delete the game vs ${opponentName}?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            await firestore().collection('teams').doc(teamId).collection('games').doc(gameId).delete();
+                            // El listener actualizará la lista
+                        } catch (error) {
+                            console.error("Error deleting game:", error);
+                            Alert.alert("Error", "Could not delete game.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
     const handleShowDetails = (gameItem) => { setSelectedGame(gameItem); setGameDetailModalVisible(true); };
-    const handleValidateGame = (gameItem) => { /* ... (código idéntico) ... */ };
+
+    const handleValidateGame = (gameItem) => {
+        const isHomeManager = gameItem.homeTeamId === teamId;
+        const myValidationField = isHomeManager ? 'homeManagerValidated' : 'awayManagerValidated';
+
+        Alert.alert(
+            "Validate Game Result",
+            `Do you confirm the result: ${gameItem.awayTeamName} ${gameItem.awayScore} - ${gameItem.homeScore} ${gameItem.homeTeamName}?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Validate",
+                    onPress: async () => {
+                        try {
+                            await firestore().collection('competition_games').doc(gameItem.id).update({
+                                [myValidationField]: true
+                            });
+                            Alert.alert("Success", "Game result validated.");
+                        } catch (error) {
+                            console.error("Error validating game:", error);
+                            Alert.alert("Error", "Could not validate game.");
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     // --- Estado de Carga (ACTUALIZADO) ---
     if (loadingRoster || loadingHistory || loadingCompetition || loadingNextGame || loadingLeagueStandings) {

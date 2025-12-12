@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react'; // <--- useMemo añadido
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, SafeAreaView, Button, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import firestore from '@react-native-firebase/firestore';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react'; // <--- useMemo añadido
+import { ActivityIndicator, Alert, Button, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Componente para Eventos Privados (Sin Cambios)
 const EventItem = ({ item, onDelete, isPlayerView }) => {
@@ -63,9 +64,9 @@ const LeagueGameItem = ({ item, teamId, isPlayerView }) => {
                     styles.gameContainer,
                     isPastOrPending && styles.playedGameContainer
                 ]}
-                disabled={!canPress} 
+                disabled={!canPress}
                 onPress={() => {
-                    if (canPress) { 
+                    if (canPress) {
                         navigation.navigate('SelectLineup', {
                             teamId: teamId, opponentName: opponentName,
                             locationStatus: isHome ? 'home' : 'away',
@@ -81,11 +82,11 @@ const LeagueGameItem = ({ item, teamId, isPlayerView }) => {
                 <View style={styles.detailsBox}>
                     <Text style={styles.itemTitle}>{gameTitle} <Text style={styles.locationText}>{locationText}</Text></Text>
                     <Text style={[styles.itemDetails, isPastOrPending && styles.playedStatusText]}>{statusText}</Text>
-                    
+
                     {item.location && (
                         <Text style={styles.gameLocationText}>📍 {item.location}</Text>
                     )}
-                    
+
                     <Text style={styles.itemType}>League Game</Text>
                 </View>
             </TouchableOpacity>
@@ -97,12 +98,12 @@ const LeagueGameItem = ({ item, teamId, isPlayerView }) => {
 const CalendarScreen = ({ route }) => {
     const navigation = useNavigation();
     const { teamId, isPlayerView } = route.params || {};
-    
+
     // --- ESTADOS REORGANIZADOS ---
     const [loadingEvents, setLoadingEvents] = useState(true);
     const [loadingGames, setLoadingGames] = useState(true);
     const [loadingCompetition, setLoadingCompetition] = useState(true); // <--- NUEVO
-    
+
     const [privateEvents, setPrivateEvents] = useState([]); // <-- Nuevo
     const [leagueGames, setLeagueGames] = useState([]); // <-- Nuevo
     const [competitionId, setCompetitionId] = useState(null); // <--- NUEVO
@@ -112,10 +113,10 @@ const CalendarScreen = ({ route }) => {
         if (!isPlayerView) {
             navigation.setOptions({
                 title: 'Team Calendar',
-                headerRight: () => ( <Button onPress={() => navigation.navigate('CreateEvent', { teamId })} title="+" /> ),
+                headerRight: () => (<Button onPress={() => navigation.navigate('CreateEvent', { teamId })} title="+" />),
             });
         } else {
-             navigation.setOptions({ title: 'Team Calendar' });
+            navigation.setOptions({ title: 'Team Calendar' });
         }
     }, [navigation, teamId, isPlayerView]);
 
@@ -130,7 +131,7 @@ const CalendarScreen = ({ route }) => {
             return;
         }
         setLoadingCompetition(true);
-        let compDetailsSubscriber = () => {};
+        let compDetailsSubscriber = () => { };
 
         const compTeamSubscriber = firestore().collection('competition_teams').where('teamId', '==', teamId).limit(1)
             .onSnapshot(querySnapshot => {
@@ -209,46 +210,46 @@ const CalendarScreen = ({ route }) => {
         if (!teamId || !competitionId) { // Si no hay liga activa
             setLeagueGames([]); // Limpiamos los juegos de la liga anterior
             setLoadingGames(false);
-            return () => {}; // No hay nada que limpiar
+            return () => { }; // No hay nada que limpiar
         }
 
-        console.log(`CalendarScreen: Setting up LEAGUE GAME listeners for active competition: ${competitionId}`); 
+        console.log(`CalendarScreen: Setting up LEAGUE GAME listeners for active competition: ${competitionId}`);
         setLoadingGames(true);
-        
+
         // ¡FILTRO AÑADIDO!
         const homeGamesQuery = firestore().collection('competition_games')
             .where('competitionId', '==', competitionId) // <--- ¡LA CORRECCIÓN!
             .where('homeTeamId', '==', teamId)
             .orderBy('gameDate', 'asc');
-        
+
         // ¡FILTRO AÑADIDO!
         const awayGamesQuery = firestore().collection('competition_games')
             .where('competitionId', '==', competitionId) // <--- ¡LA CORRECCIÓN!
             .where('awayTeamId', '==', teamId)
             .orderBy('gameDate', 'asc');
-        
-        let gamesMap = {}; 
+
+        let gamesMap = {};
         const handleSnapshot = (querySnapshot, type) => {
             let changed = false;
             if (querySnapshot) {
                 querySnapshot.forEach(doc => { const gameData = { type: 'league_game', id: doc.id, teamId: teamId, sortDate: doc.data().gameDate?.toDate(), ...doc.data() }; if (!gamesMap[doc.id] || gamesMap[doc.id].status !== gameData.status) { gamesMap[doc.id] = gameData; changed = true; } });
-                const currentIdsInSnapshot = new Set(querySnapshot.docs.map(d => d.id)); 
-                Object.keys(gamesMap).forEach(gameId => { const game = gamesMap[gameId]; const isRelevantType = (type === 'HOME' && game.homeTeamId === teamId) || (type === 'AWAY' && game.awayTeamId === teamId); if(isRelevantType && !currentIdsInSnapshot.has(gameId)) { delete gamesMap[gameId]; changed = true; } });
+                const currentIdsInSnapshot = new Set(querySnapshot.docs.map(d => d.id));
+                Object.keys(gamesMap).forEach(gameId => { const game = gamesMap[gameId]; const isRelevantType = (type === 'HOME' && game.homeTeamId === teamId) || (type === 'AWAY' && game.awayTeamId === teamId); if (isRelevantType && !currentIdsInSnapshot.has(gameId)) { delete gamesMap[gameId]; changed = true; } });
             }
-            if (changed) { 
+            if (changed) {
                 setLeagueGames(Object.values(gamesMap)); // Actualiza el estado de juegos de liga
             }
-            setLoadingGames(false); 
+            setLoadingGames(false);
         };
         const handleError = (error, type) => { console.error(`CalendarScreen: Error fetching ${type} league games:`, error); setLoadingGames(false); };
-        
+
         const homeSubscriber = homeGamesQuery.onSnapshot(snap => handleSnapshot(snap, 'HOME'), err => handleError(err, 'HOME'));
         const awaySubscriber = awayGamesQuery.onSnapshot(snap => handleSnapshot(snap, 'AWAY'), err => handleError(err, 'AWAY'));
 
-        return () => { 
-            console.log("CalendarScreen: Cleaning up game listeners."); 
-            homeSubscriber(); 
-            awaySubscriber(); 
+        return () => {
+            console.log("CalendarScreen: Cleaning up game listeners.");
+            homeSubscriber();
+            awaySubscriber();
         };
     }, [teamId, competitionId]); // <--- ¡LA DEPENDENCIA CLAVE!
 
@@ -261,35 +262,35 @@ const CalendarScreen = ({ route }) => {
     }, [privateEvents, leagueGames]);
 
 
-    const handleDeleteEvent = (eventId) => { Alert.alert( "Delete Event", "Are you sure?", [ { text: "Cancel"}, { text: "Delete", style: "destructive", onPress: () => { firestore().collection('teams').doc(teamId).collection('events').doc(eventId).delete().catch(error => Alert.alert("Error", "Could not delete event.")); }, }, ] ); };
+    const handleDeleteEvent = (eventId) => { Alert.alert("Delete Event", "Are you sure?", [{ text: "Cancel" }, { text: "Delete", style: "destructive", onPress: () => { firestore().collection('teams').doc(teamId).collection('events').doc(eventId).delete().catch(error => Alert.alert("Error", "Could not delete event.")); }, },]); };
 
     // Actualizamos el estado de carga
-    if (loadingEvents || loadingGames || loadingCompetition) { 
-        return <View style={styles.center}><ActivityIndicator size="large" /></View>; 
+    if (loadingEvents || loadingGames || loadingCompetition) {
+        return <View style={styles.center}><ActivityIndicator size="large" /></View>;
     }
-    
-    if (!teamId) { 
-        return ( <View style={styles.center}><Text style={styles.errorText}>Team information not available.</Text></View> ); 
+
+    if (!teamId) {
+        return (<View style={styles.center}><Text style={styles.errorText}>Team information not available.</Text></View>);
     }
 
     const renderItem = ({ item }) => {
-        if (item.type === 'event') { 
-            return ( <EventItem item={item} isPlayerView={isPlayerView} onDelete={handleDeleteEvent} /> ); 
-        } 
-        else if (item.type === 'league_game') { 
-            return ( <LeagueGameItem item={item} teamId={teamId} isPlayerView={isPlayerView} /> ); 
+        if (item.type === 'event') {
+            return (<EventItem item={item} isPlayerView={isPlayerView} onDelete={handleDeleteEvent} />);
+        }
+        else if (item.type === 'league_game') {
+            return (<LeagueGameItem item={item} teamId={teamId} isPlayerView={isPlayerView} />);
         }
         return null;
     };
 
     return (
         <SafeAreaView style={styles.container}>
-            <FlatList 
+            <FlatList
                 data={allItems} // <--- Usamos la lista combinada
-                renderItem={renderItem} 
-                keyExtractor={item => item.type + '_' + item.id} 
-                ListEmptyComponent={<Text style={styles.emptyText}>No upcoming events or games.</Text>} 
-                contentContainerStyle={{ padding: 10 }} 
+                renderItem={renderItem}
+                keyExtractor={item => item.type + '_' + item.id}
+                ListEmptyComponent={<Text style={styles.emptyText}>No upcoming events or games.</Text>}
+                contentContainerStyle={{ padding: 10 }}
             />
         </SafeAreaView>
     );
@@ -303,28 +304,28 @@ const styles = StyleSheet.create({
     emptyText: { textAlign: 'center', marginTop: 50, color: 'gray', fontSize: 16 },
     itemWrapper: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 6, marginVertical: 8, },
     itemContainer: { flex: 1, flexDirection: 'row', backgroundColor: 'white', borderRadius: 12, elevation: 2, overflow: 'hidden' },
-    eventContainer: { borderLeftWidth: 5, borderLeftColor: '#60a5fa' }, 
-    gameContainer: { borderLeftWidth: 5, borderLeftColor: '#34d399' }, 
+    eventContainer: { borderLeftWidth: 5, borderLeftColor: '#60a5fa' },
+    gameContainer: { borderLeftWidth: 5, borderLeftColor: '#34d399' },
     playedGameContainer: {
-        opacity: 0.7, 
-        backgroundColor: '#e5e7eb', 
-        borderLeftColor: '#9ca3af', 
-     },
+        opacity: 0.7,
+        backgroundColor: '#e5e7eb',
+        borderLeftColor: '#9ca3af',
+    },
     dateBox: { padding: 15, justifyContent: 'center', alignItems: 'center', minWidth: 70 },
-    eventDateBox: { backgroundColor: '#3b82f6' }, 
-    gameDateBox: { backgroundColor: '#10b981' }, 
+    eventDateBox: { backgroundColor: '#3b82f6' },
+    gameDateBox: { backgroundColor: '#10b981' },
     playedDateBox: {
-        backgroundColor: '#6b7280' 
+        backgroundColor: '#6b7280'
     },
     dateText: { color: 'white', fontWeight: 'bold', fontSize: 16, textAlign: 'center' },
     detailsBox: { flex: 1, padding: 15 },
     itemTitle: { fontSize: 18, fontWeight: 'bold', color: '#1f2937' },
-    locationText: { fontSize: 14, fontWeight: 'normal', color: 'gray' }, 
+    locationText: { fontSize: 14, fontWeight: 'normal', color: 'gray' },
     itemDetails: { fontSize: 14, color: 'gray', marginTop: 4 },
     playedStatusText: {
-        color: '#4b5563', 
-        fontStyle: 'italic', 
-        textTransform: 'capitalize' 
+        color: '#4b5563',
+        fontStyle: 'italic',
+        textTransform: 'capitalize'
     },
     itemType: { fontSize: 10, fontWeight: 'bold', color: '#9ca3af', marginTop: 5, textTransform: 'uppercase' },
     deleteButton: { backgroundColor: '#fee2e2', borderRadius: 20, width: 40, height: 40, justifyContent: 'center', alignItems: 'center', marginLeft: 10, elevation: 2 },

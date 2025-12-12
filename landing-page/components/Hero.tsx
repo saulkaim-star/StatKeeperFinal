@@ -29,9 +29,14 @@ export default function Hero() {
                         </p>
 
                         <div className="flex flex-col sm:flex-row gap-4 mb-10">
-                            <button disabled className="flex items-center justify-center gap-2 bg-gray-100 text-gray-400 px-8 py-4 rounded-xl font-semibold cursor-not-allowed">
-                                Coming Soon on iOS
-                            </button>
+                            <a
+                                href="https://apps.apple.com/il/app/statkeeper-baseball/id6755344006"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center justify-center gap-2 bg-gray-900 text-white px-8 py-4 rounded-xl font-semibold hover:bg-gray-800 transition-all"
+                            >
+                                Download on iOS
+                            </a>
                             <a
                                 href="https://play.google.com/store/apps/details?id=com.baseballteamapp"
                                 target="_blank"

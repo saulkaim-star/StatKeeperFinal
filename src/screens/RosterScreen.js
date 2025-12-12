@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import firestore from '@react-native-firebase/firestore';
+import * as Clipboard from 'expo-clipboard'; // <--- Importación añadida
+import React, { useEffect, useState } from 'react';
 import {
-  View,
+  Alert,
+  Button,
+  FlatList,
+  StyleSheet,
   Text,
   TextInput,
-  Button,
-  StyleSheet,
-  FlatList,
-  Alert,
   TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import firestore from '@react-native-firebase/firestore';
 
 const RosterScreen = ({ route, navigation }) => {
   const { teamId } = route.params;
@@ -56,9 +57,9 @@ const RosterScreen = ({ route, navigation }) => {
           inviteCode: null,
           ab: 0, hits: 0, walks: 0, k: 0, doubles: 0, triples: 0, homeruns: 0,
         });
-      
+
       setNewPlayerName('');
-      
+
     } catch (error) {
       console.error("Error adding player: ", error);
       Alert.alert('Error', 'Could not add player.');
@@ -68,7 +69,7 @@ const RosterScreen = ({ route, navigation }) => {
   // --- NUEVA FUNCIÓN PARA INVITAR ---
   const handleInvitePlayer = async (playerId, playerName) => {
     const inviteCode = `${playerName.substring(0, 4).toUpperCase()}-${Math.random().toString(36).substring(2, 4).toUpperCase()}`;
-    
+
     try {
       await firestore()
         .collection('teams')
@@ -83,7 +84,15 @@ const RosterScreen = ({ route, navigation }) => {
       Alert.alert(
         'Invite Code Generated',
         `Share this code with ${playerName}:\n\n${inviteCode}`,
-        [{ text: 'Copy & Close' }] // Podríamos añadir lógica para copiar al portapapeles
+        [
+          {
+            text: 'Copy & Close',
+            onPress: async () => {
+              await Clipboard.setStringAsync(inviteCode);
+              // Opcional: Podrías mostrar un Toast aquí si tuvieras una librería de Toast
+            }
+          }
+        ]
       );
     } catch (error) {
       console.error("Error generating invite code: ", error);
@@ -123,38 +132,38 @@ const RosterScreen = ({ route, navigation }) => {
   // --- FILA DEL JUGADOR ACTUALIZADA ---
   const renderPlayerItem = ({ item }) => {
     const getStatusStyle = (status) => {
-        if (status === 'claimed') return styles.statusClaimed;
-        if (status === 'invited') return styles.statusInvited;
-        return styles.statusUnclaimed;
+      if (status === 'claimed') return styles.statusClaimed;
+      if (status === 'invited') return styles.statusInvited;
+      return styles.statusUnclaimed;
     };
 
     return (
-        <View style={styles.playerRow}>
-            <View style={styles.playerInfo}>
-                <Text style={styles.playerName}>{item.playerName}</Text>
-                <Text style={[styles.statusText, getStatusStyle(item.status)]}>
-                    {item.status || 'unclaimed'}
-                </Text>
-            </View>
-            <View style={styles.playerActions}>
-                {item.status !== 'claimed' && (
-                    <TouchableOpacity 
-                        style={styles.inviteButton} 
-                        onPress={() => handleInvitePlayer(item.id, item.playerName)}
-                    >
-                        <Text style={styles.buttonText}>
-                            {item.status === 'invited' ? 'Resend' : 'Invite'}
-                        </Text>
-                    </TouchableOpacity>
-                )}
-                <TouchableOpacity 
-                    style={styles.deleteButton}
-                    onPress={() => handleDeletePlayer(item.id, item.playerName)}
-                >
-                    <Text style={styles.buttonText}>X</Text>
-                </TouchableOpacity>
-            </View>
+      <View style={styles.playerRow}>
+        <View style={styles.playerInfo}>
+          <Text style={styles.playerName}>{item.playerName}</Text>
+          <Text style={[styles.statusText, getStatusStyle(item.status)]}>
+            {item.status || 'unclaimed'}
+          </Text>
         </View>
+        <View style={styles.playerActions}>
+          {item.status !== 'claimed' && (
+            <TouchableOpacity
+              style={styles.inviteButton}
+              onPress={() => handleInvitePlayer(item.id, item.playerName)}
+            >
+              <Text style={styles.buttonText}>
+                {item.status === 'invited' ? 'Resend' : 'Invite'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeletePlayer(item.id, item.playerName)}
+          >
+            <Text style={styles.buttonText}>X</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   };
 
@@ -273,5 +282,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
   }
 });
-  
+
 export default RosterScreen;

@@ -1,27 +1,27 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  ActivityIndicator,
-  TouchableOpacity,
-  SafeAreaView, 
-  Button,
-  Alert,
-  Modal, 
-  ScrollView, 
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
 import firestore from '@react-native-firebase/firestore';
-import ViewShot from "react-native-view-shot";
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Button,
+    FlatList,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Share from 'react-native-share';
+import ViewShot from "react-native-view-shot";
 
 // --- INICIO: COMPONENTES COPIADOS DE STATSSCREEN ---
 
-const calculateAvg = (hits, ab) => { 
-    const avg = ab > 0 ? (hits / ab) : 0; 
-    return avg.toFixed(3).toString().replace(/^0/, ''); 
+const calculateAvg = (hits, ab) => {
+    const avg = ab > 0 ? (hits / ab) : 0;
+    return avg.toFixed(3).toString().replace(/^0/, '');
 };
 
 // Componente FullStatRow "inteligente" (Sin cambios desde la última vez)
@@ -46,7 +46,7 @@ const FullStatRow = ({ item }) => {
             <Text style={styles.statCell}>{walks}</Text>
             <Text style={styles.statCell}>{k}</Text>
             <Text style={[styles.statCell, { fontWeight: 'bold' }]}>{avg}</Text>
-        </View> 
+        </View>
     );
 };
 
@@ -56,7 +56,7 @@ const GameDetailModalContent = ({ selectedGame, viewShotRef, onShare }) => {
     const homeModalTeamName = selectedGame.homeTeamName;
     const homeModalScore = selectedGame.homeScore || 0;
     const homeModalBoxScore = selectedGame.homeBoxScore;
-    
+
     const awayModalTeamName = selectedGame.awayTeamName;
     const awayModalScore = selectedGame.awayScore || 0;
     const awayModalBoxScore = selectedGame.awayBoxScore;
@@ -70,38 +70,38 @@ const GameDetailModalContent = ({ selectedGame, viewShotRef, onShare }) => {
                 <View style={styles.shareableContent}>
                     <Text style={styles.modalTitle}>Game Results</Text>
                     <View style={styles.modalScoreContainer}>
-                        <View style={styles.modalScoreTeam}> 
-                            <Text style={styles.modalScoreName}>{awayModalTeamName}</Text> 
-                            <Text style={styles.modalScoreNumber}>{awayModalScore}</Text> 
+                        <View style={styles.modalScoreTeam}>
+                            <Text style={styles.modalScoreName}>{awayModalTeamName}</Text>
+                            <Text style={styles.modalScoreNumber}>{awayModalScore}</Text>
                         </View>
-                        <View style={styles.modalScoreTeam}> 
-                            <Text style={styles.modalScoreName}>{homeModalTeamName}</Text> 
-                            <Text style={styles.modalScoreNumber}>{homeModalScore}</Text> 
+                        <View style={styles.modalScoreTeam}>
+                            <Text style={styles.modalScoreName}>{homeModalTeamName}</Text>
+                            <Text style={styles.modalScoreNumber}>{homeModalScore}</Text>
                         </View>
                     </View>
-                    
-                    <Text style={styles.boxScoreHeader}>{awayModalTeamName} Box Score</Text>
-                    {(awayModalBoxScore && awayModalBoxScore.length > 0) ? ( <>
-                            <View style={styles.statTableHeader}> <Text style={styles.statPlayerNameHeader}>PLAYER</Text> <Text style={styles.statCellHeader}>AB</Text><Text style={styles.statCellHeader}>H</Text> <Text style={styles.statCellHeader}>2B</Text><Text style={styles.statCellHeader}>3B</Text> <Text style={styles.statCellHeader}>HR</Text><Text style={styles.statCellHeader}>BB</Text> <Text style={styles.statCellHeader}>K</Text><Text style={styles.statCellHeader}>AVG</Text> </View>
-                            
-                            {/* --- INICIO DE LA CORRECCIÓN 1: Se quita el ScrollView interno --- */}
-                            {awayModalBoxScore.map(item => ( item && (item.id || item.playerName) ? <FullStatRow key={item.id || item.playerName} item={item} /> : null ))}
-                            {/* --- FIN DE LA CORRECCIÓN 1 --- */}
-                            
-                        </> ) : ( <Text style={styles.emptyText}>Box score not available.</Text> )}
-                    
-                    <Text style={styles.boxScoreHeader}>{homeModalTeamName} Box Score</Text>
-                    {(homeModalBoxScore && homeModalBoxScore.length > 0) ? ( <>
-                            <View style={styles.statTableHeader}> <Text style={styles.statPlayerNameHeader}>PLAYER</Text> <Text style={styles.statCellHeader}>AB</Text><Text style={styles.statCellHeader}>H</Text> <Text style={styles.statCellHeader}>2B</Text><Text style={styles.statCellHeader}>3B</Text> <Text style={styles.statCellHeader}>HR</Text><Text style={styles.statCellHeader}>BB</Text> <Text style={styles.statCellHeader}>K</Text><Text style={styles.statCellHeader}>AVG</Text> </View>
-                            
-                            {/* --- INICIO DE LA CORRECCIÓN 2: Se quita el ScrollView interno --- */}
-                            {homeModalBoxScore.map(item => ( item && (item.id || item.playerName) ? <FullStatRow key={item.id || item.playerName} item={item} /> : null ))}
-                            {/* --- FIN DE LA CORRECCIÓN 2 --- */}
 
-                        </> ) : ( <Text style={styles.emptyText}>Box score not available.</Text> )}
+                    <Text style={styles.boxScoreHeader}>{awayModalTeamName} Box Score</Text>
+                    {(awayModalBoxScore && awayModalBoxScore.length > 0) ? (<>
+                        <View style={styles.statTableHeader}> <Text style={styles.statPlayerNameHeader}>PLAYER</Text> <Text style={styles.statCellHeader}>AB</Text><Text style={styles.statCellHeader}>H</Text> <Text style={styles.statCellHeader}>2B</Text><Text style={styles.statCellHeader}>3B</Text> <Text style={styles.statCellHeader}>HR</Text><Text style={styles.statCellHeader}>BB</Text> <Text style={styles.statCellHeader}>K</Text><Text style={styles.statCellHeader}>AVG</Text> </View>
+
+                        {/* --- INICIO DE LA CORRECCIÓN 1: Se quita el ScrollView interno --- */}
+                        {awayModalBoxScore.map(item => (item && (item.id || item.playerName) ? <FullStatRow key={item.id || item.playerName} item={item} /> : null))}
+                        {/* --- FIN DE LA CORRECCIÓN 1 --- */}
+
+                    </>) : (<Text style={styles.emptyText}>Box score not available.</Text>)}
+
+                    <Text style={styles.boxScoreHeader}>{homeModalTeamName} Box Score</Text>
+                    {(homeModalBoxScore && homeModalBoxScore.length > 0) ? (<>
+                        <View style={styles.statTableHeader}> <Text style={styles.statPlayerNameHeader}>PLAYER</Text> <Text style={styles.statCellHeader}>AB</Text><Text style={styles.statCellHeader}>H</Text> <Text style={styles.statCellHeader}>2B</Text><Text style={styles.statCellHeader}>3B</Text> <Text style={styles.statCellHeader}>HR</Text><Text style={styles.statCellHeader}>BB</Text> <Text style={styles.statCellHeader}>K</Text><Text style={styles.statCellHeader}>AVG</Text> </View>
+
+                        {/* --- INICIO DE LA CORRECCIÓN 2: Se quita el ScrollView interno --- */}
+                        {homeModalBoxScore.map(item => (item && (item.id || item.playerName) ? <FullStatRow key={item.id || item.playerName} item={item} /> : null))}
+                        {/* --- FIN DE LA CORRECCIÓN 2 --- */}
+
+                    </>) : (<Text style={styles.emptyText}>Box score not available.</Text>)}
                 </View>
             </ViewShot>
-            {hasAnyBoxScore && <Button title="Share Box Score" onPress={() => onShare(viewShotRef)} /> }
+            {hasAnyBoxScore && <Button title="Share Box Score" onPress={() => onShare(viewShotRef)} />}
         </>
     );
 };
@@ -113,13 +113,13 @@ const GameItem = ({ item, onDelete, onEdit, onForfeit, onDetails }) => {
     const gameDate = item.gameDate?.toDate();
     const formattedDate = gameDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const formattedTime = gameDate?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-    
+
     const gameTitle = `${item.homeTeamName} vs ${item.awayTeamName}`;
     const statusText = item.status ? item.status.replace('_', ' ') : 'Scheduled';
     const statusStyle = styles[`status_${item.status}`] || styles.status_scheduled;
 
     const canTakeAction = item.status === 'scheduled';
-    
+
     const isCompleted = item.status === 'completed' || item.status === 'pending_validation';
     const hasBoxScore = item.homeBoxScore || item.awayBoxScore;
 
@@ -128,10 +128,10 @@ const GameItem = ({ item, onDelete, onEdit, onForfeit, onDetails }) => {
         if (isCompleted) {
             const homeScore = item.homeScore ?? '?';
             const awayScore = item.awayScore ?? '?';
-            return ( <Text style={[styles.itemDetails, styles.scoreDetails]}>{`Score: ${homeScore} - ${awayScore}`}</Text> );
+            return (<Text style={[styles.itemDetails, styles.scoreDetails]}>{`Score: ${homeScore} - ${awayScore}`}</Text>);
         }
         if (item.status === 'scheduled') {
-             return ( <Text style={styles.itemDetails}>{`Scheduled at ${formattedTime || '?'}`}</Text> );
+            return (<Text style={styles.itemDetails}>{`Scheduled at ${formattedTime || '?'}`}</Text>);
         }
         return <Text style={styles.itemDetails}>{statusText}</Text>;
     };
@@ -145,22 +145,22 @@ const GameItem = ({ item, onDelete, onEdit, onForfeit, onDetails }) => {
                 <View style={styles.detailsBox}>
                     <Text style={styles.itemTitle}>{gameTitle}</Text>
                     <GameDetails />
-                    
+
                     {item.location && (
                         <Text style={styles.locationText}>📍 {item.location}</Text>
                     )}
-                    
+
                     <Text style={[styles.statusText, statusStyle]}>{statusText}</Text>
                 </View>
             </View>
             <View style={styles.actionButtonsContainer}>
-                
+
                 {isCompleted && hasBoxScore && (
                     <TouchableOpacity onPress={() => onDetails(item)} style={[styles.actionButton, styles.detailsButton]}>
                         <Text style={styles.actionButtonText}>📄</Text>
                     </TouchableOpacity>
                 )}
-                
+
                 {(item.status === 'scheduled' || isCompleted) && (
                     <TouchableOpacity onPress={() => onEdit(item)} style={[styles.actionButton, styles.editButton]}>
                         <Text style={styles.actionButtonText}>✏️</Text>
@@ -190,17 +190,17 @@ const CompetitionCalendarScreen = ({ route }) => {
     const [games, setGames] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    
-    const [gameDetailModalVisible, setGameDetailModalVisible] = useState(false); 
-    const [selectedGame, setSelectedGame] = useState(null); 
+
+    const [gameDetailModalVisible, setGameDetailModalVisible] = useState(false);
+    const [selectedGame, setSelectedGame] = useState(null);
     const gameDetailViewShotRef = useRef();
 
 
     // Botón '+' en el header
     useLayoutEffect(() => {
         navigation.setOptions({
-             title: 'Game Schedule',
-             headerRight: () => ( <Button onPress={() => navigation.navigate('CreateCompetitionGame', { competitionId })} title="+" /> ),
+            title: 'Game Schedule',
+            headerRight: () => (<Button onPress={() => navigation.navigate('CreateCompetitionGame', { competitionId })} title="+" />),
         });
     }, [navigation, competitionId]);
 
@@ -218,8 +218,8 @@ const CompetitionCalendarScreen = ({ route }) => {
                 const gamesList = [];
                 if (querySnapshot) {
                     console.log("EFFECT: Snapshot received! Size:", querySnapshot.size);
-                    querySnapshot.forEach(doc => { 
-                        gamesList.push({ id: doc.id, type: 'league_game', ...doc.data() }); 
+                    querySnapshot.forEach(doc => {
+                        gamesList.push({ id: doc.id, type: 'league_game', ...doc.data() });
                     });
                     console.log("EFFECT: Processed gamesList:", gamesList.length);
                 } else { console.log("EFFECT: Snapshot received but is null/undefined?"); }
@@ -232,33 +232,35 @@ const CompetitionCalendarScreen = ({ route }) => {
             });
         return () => { console.log("EFFECT: Cleaning up Firestore listener."); subscriber(); };
     }, [competitionId]);
-    
+
     const handleShare = async (ref) => {
-      try {
-        const uri = await ref.current.capture();
-        await Share.open({
-          url: `file://${uri}`,
-          type: 'image/png',
-          title: 'Share Game Stats'
-        });
-      } catch (error) {
-        if (error.message !== "User did not share") {
-          console.error('Error sharing image:', error);
-          Alert.alert("Error", "Could not share image.");
+        try {
+            const uri = await ref.current.capture();
+            await Share.open({
+                url: `file://${uri}`,
+                type: 'image/png',
+                title: 'Share Game Stats'
+            });
+        } catch (error) {
+            if (error.message !== "User did not share") {
+                console.error('Error sharing image:', error);
+                Alert.alert("Error", "Could not share image.");
+            }
         }
-      }
     };
-    
+
     const handleShowDetails = (gameItem) => {
-        setSelectedGame(gameItem); 
+        setSelectedGame(gameItem);
         setGameDetailModalVisible(true);
     };
 
     const handleDeleteGame = (gameId, homeTeamName, awayTeamName) => {
-        Alert.alert( "Delete Game", `Delete ${homeTeamName} vs ${awayTeamName}?`,
-            [ { text: "Cancel"}, { text: "Delete", style: "destructive", onPress: () => {
-                firestore().collection('competition_games').doc(gameId).delete().catch(e => Alert.alert("Error", "Could not delete game."));
-            }, }, ]
+        Alert.alert("Delete Game", `Delete ${homeTeamName} vs ${awayTeamName}?`,
+            [{ text: "Cancel" }, {
+                text: "Delete", style: "destructive", onPress: () => {
+                    firestore().collection('competition_games').doc(gameId).delete().catch(e => Alert.alert("Error", "Could not delete game."));
+                },
+            },]
         );
     };
 
@@ -272,14 +274,14 @@ const CompetitionCalendarScreen = ({ route }) => {
     };
 
     const handleMarkForfeit = (gameId, homeTeamName, awayTeamName) => {
-        Alert.alert( "Mark Forfeit", `Which team forfeited the game between ${homeTeamName} and ${awayTeamName}?`,
-            [ { text: "Cancel", style: "cancel" }, { text: `${awayTeamName} (Away) Forfeited`, onPress: () => updateGameForfeit(gameId, true) }, { text: `${homeTeamName} (Home) Forfeited`, onPress: () => updateGameForfeit(gameId, false), style: "destructive" }, ]
+        Alert.alert("Mark Forfeit", `Which team forfeited the game between ${homeTeamName} and ${awayTeamName}?`,
+            [{ text: "Cancel", style: "cancel" }, { text: `${awayTeamName} (Away) Forfeited`, onPress: () => updateGameForfeit(gameId, true) }, { text: `${homeTeamName} (Home) Forfeited`, onPress: () => updateGameForfeit(gameId, false), style: "destructive" },]
         );
     };
     const updateGameForfeit = async (gameId, isHomeWin) => {
         // Lógica para actualizar el forfeit
         console.log(`Marking game ${gameId} as forfeit. Home win: ${isHomeWin}`);
-        
+
         const gameRef = firestore().collection('competition_games').doc(gameId);
         try {
             await gameRef.update({
@@ -288,7 +290,7 @@ const CompetitionCalendarScreen = ({ route }) => {
                 awayScore: isHomeWin ? 0 : 7,
                 resolution: isHomeWin ? 'forfeit_away' : 'forfeit_home', // home wins = away forfeits
                 // Marcar como validado por ambos ya que es una acción del organizador
-                homeManagerValidated: true, 
+                homeManagerValidated: true,
                 awayManagerValidated: true,
             });
             Alert.alert("Success", "Game has been marked as forfeit.");
@@ -300,7 +302,7 @@ const CompetitionCalendarScreen = ({ route }) => {
 
     console.log("RENDER: Current state:", { loading, error: !!error, gamesCount: games.length });
     if (loading) { console.log("RENDER: Showing loading indicator."); return <View style={styles.center}><ActivityIndicator size="large" /></View>; }
-    if (error) { console.log("RENDER: Showing error message:", error); return ( <View style={styles.center}><Text style={styles.errorText}>{error}</Text></View> ); }
+    if (error) { console.log("RENDER: Showing error message:", error); return (<View style={styles.center}><Text style={styles.errorText}>{error}</Text></View>); }
 
     console.log("RENDER: Rendering FlatList.");
     return (
@@ -313,18 +315,18 @@ const CompetitionCalendarScreen = ({ route }) => {
                         onDelete={handleDeleteGame}
                         onEdit={handleEditGame}
                         onForfeit={handleMarkForfeit}
-                        onDetails={handleShowDetails} 
+                        onDetails={handleShowDetails}
                     />
                 )}
                 keyExtractor={item => item.id}
                 ListEmptyComponent={<Text style={styles.emptyText}>No games scheduled yet.</Text>}
                 contentContainerStyle={{ padding: 10 }}
             />
-            
+
             {/* --- INICIO DE LA CORRECCIÓN 3: Añadir ScrollView externo --- */}
             <Modal visible={gameDetailModalVisible} onRequestClose={() => setGameDetailModalVisible(false)} animationType="slide">
-                 <SafeAreaView style={styles.modalContainer}>
-                    <ScrollView> 
+                <SafeAreaView style={styles.modalContainer}>
+                    <ScrollView>
                         {selectedGame && (
                             <GameDetailModalContent
                                 selectedGame={selectedGame}
@@ -359,12 +361,12 @@ const styles = StyleSheet.create({
     itemDetails: { fontSize: 14, color: 'gray', marginTop: 4, textTransform: 'capitalize' },
     scoreDetails: { color: '#1f2937', fontWeight: '500', fontSize: 15, },
     statusText: { fontSize: 10, fontWeight: 'bold', marginTop: 5, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: 'hidden', alignSelf: 'flex-start', textTransform: 'capitalize' },
-    status_scheduled: { backgroundColor: '#e0e7ff', color: '#4f46e5'},
-    status_pending_validation: { backgroundColor: '#fef3c7', color: '#d97706'},
-    status_completed: { backgroundColor: '#e5e7eb', color: '#4b5563'},
+    status_scheduled: { backgroundColor: '#e0e7ff', color: '#4f46e5' },
+    status_pending_validation: { backgroundColor: '#fef3c7', color: '#d97706' },
+    status_completed: { backgroundColor: '#e5e7eb', color: '#4b5563' },
     actionButtonsContainer: { flexDirection: 'column', marginLeft: 10, justifyContent: 'center' },
     actionButton: { borderRadius: 18, width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginBottom: 8, elevation: 2, },
-    detailsButton: { backgroundColor: '#bfdbfe', }, 
+    detailsButton: { backgroundColor: '#bfdbfe', },
     editButton: { backgroundColor: '#dbeafe', },
     forfeitButton: { backgroundColor: '#ffedd5', },
     deleteButton: { backgroundColor: '#fee2e2', },
@@ -373,7 +375,7 @@ const styles = StyleSheet.create({
 
     locationText: {
         fontSize: 14,
-        color: '#374151', 
+        color: '#374151',
         fontWeight: '500',
         marginTop: 4,
     },
@@ -388,10 +390,10 @@ const styles = StyleSheet.create({
     modalScoreNumber: { fontSize: 36, fontWeight: 'bold', color: 'white', marginTop: 5, },
     boxScoreHeader: { fontSize: 20, fontWeight: 'bold', marginHorizontal: 16, marginTop: 15, marginBottom: 10 },
     statTableHeader: { flexDirection: 'row', paddingVertical: 8, paddingHorizontal: 15, borderBottomWidth: 1, borderTopWidth: 1, borderColor: '#eee', backgroundColor: '#f9f9f9' },
-    statPlayerNameHeader: { flex: 2, fontWeight: 'bold' }, 
+    statPlayerNameHeader: { flex: 2, fontWeight: 'bold' },
     statCellHeader: { flex: 1, fontWeight: 'bold', textAlign: 'center' },
     statRow: { flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 15, borderBottomWidth: 1, borderBottomColor: '#f9f9f9', alignItems: 'center' },
-    statPlayerName: { flex: 2 }, 
+    statPlayerName: { flex: 2 },
     statCell: { flex: 1, textAlign: 'center' },
 });
 

@@ -7,7 +7,7 @@ import {
   Button,
   FlatList,
   Linking,
-  SafeAreaView,
+
   ScrollView,
   Share,
   StyleSheet,
@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { handleDeleteAccount } from '../utils/authUtils';
 
 // --- Funciones Helper (calculateAvg, getLeaders) ... (SIN CAMBIOS) ---

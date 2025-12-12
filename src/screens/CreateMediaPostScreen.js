@@ -1,34 +1,34 @@
 // components/CreateMediaPostScreen.js
 
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import storage from '@react-native-firebase/storage';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Image,
-  Alert,
   ActivityIndicator,
-  SafeAreaView,
+  Alert,
+  Image,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
-import storage from '@react-native-firebase/storage';
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // (Opcional) Si quieres un reproductor de video para la vista previa
 // npm install react-native-video
 // import Video from 'react-native-video';
 
 const CreateMediaPostScreen = ({ route, navigation }) => {
-  
+
   // --- ¡¡CAMBIO 1!! ---
   // Ahora recibimos 'teamId' Y 'competitionId'
-  const { teamId, competitionId } = route.params; 
+  const { teamId, competitionId } = route.params;
   // --- FIN CAMBIO 1 ---
-  
+
   const currentUser = auth().currentUser;
 
   const [mediaAsset, setMediaAsset] = useState(null); // Guarda el 'asset' (foto/video)
@@ -55,7 +55,7 @@ const CreateMediaPostScreen = ({ route, navigation }) => {
         // --- ¡VALIDACIÓN DE 50 SEGUNDOS! ---
         if (asset.type.startsWith('video') && asset.duration > 50) {
           Alert.alert(
-            "Video Too Long", 
+            "Video Too Long",
             "Please select a video that is 50 seconds or less."
           );
           return; // Detenemos
@@ -85,7 +85,7 @@ const CreateMediaPostScreen = ({ route, navigation }) => {
     const fileType = mediaAsset.type.startsWith('video') ? 'video' : 'photo';
     const fileName = mediaAsset.fileName || `media_${postId}`;
     const storagePath = `media_posts/${currentUser.uid}/${postId}/${fileName}`;
-    
+
     const reference = storage().ref(storagePath);
 
     // 1. Subir el archivo a Storage
@@ -111,12 +111,12 @@ const CreateMediaPostScreen = ({ route, navigation }) => {
         type: fileType,
         userId: currentUser.uid,
         teamId: teamId,
-        
+
         // --- ¡¡CAMBIO 2!! ---
         // Aquí guardamos el 'competitionId' en la base de datos
-        competitionId: competitionId, 
+        competitionId: competitionId,
         // --- FIN CAMBIO 2 ---
-        
+
         createdAt: firestore.FieldValue.serverTimestamp(),
         likes: [], // (Para el futuro)
       });

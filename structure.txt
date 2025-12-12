@@ -1,0 +1,21 @@
+131:         }
+132:     }
+133:     packagingOptions {
+134:         jniLibs {
+135:             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
+136:             useLegacyPackaging enableLegacyPackaging.toBoolean()
+137:         }
+138:     }
+139:     androidResources {
+140:         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+141:     }
+142: }
+143: 
+144: // Apply static values from `gradle.properties` to the `android.packagingOptions`
+145: // Accepts values in comma delimited lists, example:
+146: // android.packagingOptions.pickFirsts=/LICENSE,**/picasa.ini
+147: ["pickFirsts", "excludes", "merges", "doNotStrip"].each { prop ->
+148:     // Split option: 'foo,bar' -> ['foo', 'bar']
+149:     def options = (findProperty("android.packagingOptions.$prop") ?: "").split(",");
+150:     // Trim all elements in place.
+151:     for (i in 0..<options.size()) options[i] = options[i].trim();
