@@ -1,8 +1,10 @@
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import storage from '@react-native-firebase/storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Button, FlatList, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, FlatList, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Share from 'react-native-share'; // <--- Importación añadida
 import ViewShot from "react-native-view-shot";
@@ -168,6 +170,7 @@ const StatsScreen = ({ route }) => {
 
     // --- Estados (Sin cambios) ---
     const [teamName, setTeamName] = useState(initialTeamName || '');
+    const [teamLogo, setTeamLogo] = useState(null);
     const [privateGames, setPrivateGames] = useState([]);
     const [leagueGames, setLeagueGames] = useState([]);
     const [playersStats, setPlayersStats] = useState([]);
@@ -193,7 +196,7 @@ const StatsScreen = ({ route }) => {
         }
 
         let teamNameSubscriber = () => { };
-        if (!initialTeamName) { teamNameSubscriber = firestore().collection('teams').doc(teamId).onSnapshot(doc => { if (doc.exists) { setTeamName(doc.data().teamName || ''); } }, error => { console.error("Error fetching team name:", error); }); }
+        if (!initialTeamName) { teamNameSubscriber = firestore().collection('teams').doc(teamId).onSnapshot(doc => { if (doc.exists) { setTeamName(doc.data().teamName || ''); setTeamLogo(doc.data().photoURL || null); } }, error => { console.error("Error fetching team name:", error); }); }
 
         setLoadingRoster(true);
         const playersSubscriber = firestore().collection('teams').doc(teamId).collection('roster').onSnapshot(querySnapshot => { setPlayersStats(querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))); setLoadingRoster(false); }, error => { console.error("Error fetching roster:", error); setLoadingRoster(false); });
@@ -580,12 +583,51 @@ const StatsScreen = ({ route }) => {
         return <View style={styles.centerContainer}><ActivityIndicator size="large" /></View>;
     }
 
+    const handleUpdateLogo = () => {
+        if (!currentUser) { Alert.alert('Error', 'You must be logged in to update the logo.'); return; }
+        launchImageLibrary({ mediaType: 'photo', quality: 0.7 }, async (response) => {
+            if (response.didCancel) return;
+            if (response.errorCode) { Alert.alert('Error', response.errorMessage); return; }
+            if (response.assets && response.assets.length > 0) {
+                const uploadUri = response.assets[0].uri;
+                let filename = uploadUri.substring(uploadUri.lastIndexOf('/') + 1);
+                const extension = filename.split('.').pop();
+                // Use a path that is likely allowed by rules: media_posts/{userId}/...
+                const storagePath = `media_posts/${currentUser.uid}/team_logos/${teamId}_${Date.now()}.${extension}`;
+                try {
+                    const storageRef = storage().ref(storagePath);
+                    await storageRef.putFile(uploadUri);
+                    const url = await storageRef.getDownloadURL();
+                    await firestore().collection('teams').doc(teamId).update({ photoURL: url });
+                    setTeamLogo(url);
+                } catch (e) {
+                    console.error("Upload error details:", e);
+                    Alert.alert('Error', 'Could not upload image. Permission denied?');
+                }
+            }
+        });
+    };
+
     // --- Componente de renderizado (¡MODIFICADO!) ---
     return (
         <SafeAreaView style={styles.container}>
             <FlatList
                 ListHeaderComponent={
                     <>
+                        <View style={styles.logoContainer}>
+                            {teamLogo ? (
+                                <Image source={{ uri: teamLogo }} style={styles.teamLogo} />
+                            ) : (
+                                <View style={styles.teamLogoPlaceholder}>
+                                    <Text style={styles.teamLogoPlaceholderText}>{teamName ? teamName.charAt(0).toUpperCase() : 'T'}</Text>
+                                </View>
+                            )}
+                            {!isPlayerView && (
+                                <TouchableOpacity style={styles.editLogoButton} onPress={handleUpdateLogo}>
+                                    <Text style={styles.editLogoText}>✏️</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                         <Text style={styles.title}>{teamName} Stats</Text>
 
                         <View style={styles.card}>
@@ -798,6 +840,12 @@ const styles = StyleSheet.create({
     nextGameCard: { backgroundColor: '#e0f2fe', borderLeftWidth: 5, borderLeftColor: '#0ea5e9', paddingBottom: 20, },
     nextGameTitle: { fontSize: 16, fontWeight: 'bold', color: '#0ea5e9', textAlign: 'center', marginBottom: 15, textTransform: 'uppercase', },
     nextGameOpponent: { fontSize: 22, fontWeight: 'bold', textAlign: 'center', color: '#1f2937', marginBottom: 5, },
+    logoContainer: { alignItems: 'center', marginTop: 20, marginBottom: 10 },
+    teamLogo: { width: 120, height: 120, borderRadius: 60 },
+    teamLogoPlaceholder: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center' },
+    teamLogoPlaceholderText: { fontSize: 50, fontWeight: 'bold', color: '#6b7280' },
+    editLogoButton: { position: 'absolute', bottom: 5, right: '32%', backgroundColor: 'white', borderRadius: 15, padding: 6, elevation: 3 },
+    editLogoText: { fontSize: 18 },
     nextGameDateTime: { fontSize: 16, color: '#4b5563', textAlign: 'center', marginBottom: 2, },
     locationText: { fontSize: 14, fontWeight: 'normal', color: 'gray' },
     nextGameLocation: { fontSize: 16, color: '#4b5563', textAlign: 'center', fontWeight: '500', marginTop: 8, paddingHorizontal: 10, },
