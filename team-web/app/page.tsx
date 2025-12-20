@@ -1,6 +1,8 @@
 "use client";
+import PlayerCardWeb from "@/components/PlayerCardWeb";
 import { db } from "@/lib/firebase";
-import { collection, collectionGroup, getDocs, limit, query } from "firebase/firestore";
+import { calculateAvg, calculateOPS } from "@/lib/helpers";
+import { collection, getDocs, limit, query } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FaMobileAlt } from "react-icons/fa";
@@ -24,48 +26,114 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-        // 1. Fetch Leagues
-        const leaguesQuery = query(collection(db, "competitions"), limit(10));
+        // 1. Fetch Leagues (Smart Hybrid Sort: Logo Priority + Fill)
+        const leaguesQuery = query(collection(db, "competitions"), limit(50));
         const leaguesSnap = await getDocs(leaguesQuery);
-        const leagues = leaguesSnap.docs.map(doc => ({
+        const allLeagues = leaguesSnap.docs.map(doc => ({
           id: doc.id,
           name: doc.data().name || "Unnamed League",
           logoUrl: doc.data().logoUrl
         }));
-        setRecentLeagues(leagues);
 
-        // 2. Fetch Teams
-        const teamsQuery = query(collection(db, "teams"), limit(10));
+        const leaguesWithLogo = allLeagues.filter(l => l.logoUrl);
+        const leaguesNoLogo = allLeagues.filter(l => !l.logoUrl);
+        // Combine: Logos first, then fill with others up to 10
+        const sortedLeagues = [...leaguesWithLogo, ...leaguesNoLogo].slice(0, 10);
+        setRecentLeagues(sortedLeagues);
+
+        // 2. Fetch Teams (Smart Hybrid Sort: Logo Priority + Fill)
+        const teamsQuery = query(collection(db, "teams"), limit(50));
         const teamsSnap = await getDocs(teamsQuery);
-        const teams = teamsSnap.docs.map(doc => ({
+        const allTeams = teamsSnap.docs.map(doc => ({
           id: doc.id,
           teamName: doc.data().teamName || "Unnamed Team",
           managerName: doc.data().managerName,
           photoURL: doc.data().photoURL
         }));
-        setRecentTeams(teams);
 
-        // 3. Fetch Spotlight Players (Filter strategy)
+        const teamsWithLogo = allTeams.filter(t => t.photoURL);
+        const teamsNoLogo = allTeams.filter(t => !t.photoURL);
+        // Combine: Logos first, then fill with others up to 10
+        const sortedTeams = [...teamsWithLogo, ...teamsNoLogo].slice(0, 10);
+        setRecentTeams(sortedTeams);
+
+        // 3. Fetch Spotlight Players (Teams-First Hybrid Strategy)
         try {
-          // Fetch more so we can filter client-side for photos without risking empty list if we used strictly 'where' without index
-          const playersQuery = query(collectionGroup(db, 'roster'), limit(24));
-          const playersSnap = await getDocs(playersQuery);
-          const players = playersSnap.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            teamId: doc.ref.parent.parent?.id
-          })) as any[];
+          // A. Fetch a large batch of teams (Hybrid: Get mostly with logos, but fill if needed)
+          const teamsBatchQuery = query(collection(db, "teams"), limit(50));
+          const teamsBatchSnap = await getDocs(teamsBatchQuery);
 
-          // Sort: Players with photos get priority
-          const sortedPlayers = players.sort((a, b) => {
+          const allTeamsRaw = teamsBatchSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+          // Hybrid Sort Teams: Logo First -> Then No Logo
+          const tWith = allTeamsRaw.filter(t => t.photoURL);
+          const tWithout = allTeamsRaw.filter(t => !t.photoURL);
+          const candidateTeams = [...tWith, ...tWithout].slice(0, 15); // Take top 15 candidates for pool
+
+          // B. Fetch Players from these prioritized teams
+          const allPlayers: any[] = [];
+
+          await Promise.all(candidateTeams.map(async (team) => {
+            try {
+              const rosterQuery = query(collection(db, "teams", team.id, "roster"), limit(5));
+              const rosterSnap = await getDocs(rosterQuery);
+
+              const teamPlayers = rosterSnap.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                teamId: team.id,
+                fetchedTeamLogo: team.photoURL // Attach logo (or undefined)
+              }));
+
+              allPlayers.push(...teamPlayers);
+            } catch (e) {
+              console.error(`Error fetching roster for team ${team.id}`, e);
+            }
+          }));
+
+          // C. Calculate stats
+          const playersWithStats = allPlayers.map(p => ({
+            ...p,
+            avg: calculateAvg(Number(p.hits || 0), Number(p.ab || 0)),
+            ops: calculateOPS(
+              Number(p.hits || 0), Number(p.ab || 0), Number(p.bb || 0), Number(p.hbp || 0), Number(p.sf || 0),
+              Number(p.doubles || 0), Number(p.triples || 0), Number(p.hr || 0)
+            )
+          }));
+
+          // D. Sort by Performance (OPS) with Hybrid Priority
+          // Priority 1: Player Photo | Priority 2: Team Logo | Priority 3: OPS
+          const performanceSorted = playersWithStats.sort((a, b) => {
             const hasPhotoA = !!a.photoURL;
             const hasPhotoB = !!b.photoURL;
             if (hasPhotoA && !hasPhotoB) return -1;
             if (!hasPhotoA && hasPhotoB) return 1;
-            return 0;
-          }).slice(0, 10); // Display top 10
 
-          setSpotlightPlayers(sortedPlayers);
+            const hasLogoA = !!a.fetchedTeamLogo;
+            const hasLogoB = !!b.fetchedTeamLogo;
+            if (hasLogoA && !hasLogoB) return -1;
+            if (!hasLogoA && hasLogoB) return 1;
+
+            return parseFloat(b.ops) - parseFloat(a.ops);
+          });
+
+          // E. Diversity Filter: Max 2 players per team
+          const teamCounts: { [key: string]: number } = {};
+          const diversePlayers: any[] = [];
+
+          for (const player of performanceSorted) {
+            if (diversePlayers.length >= 10) break;
+
+            const tid = player.teamId;
+            const count = teamCounts[tid] || 0;
+
+            if (count < 2) {
+              diversePlayers.push(player);
+              teamCounts[tid] = count + 1;
+            }
+          }
+
+          setSpotlightPlayers(diversePlayers);
         } catch (e) {
           console.warn("Could not fetch spotlight players:", e);
         }
@@ -102,7 +170,7 @@ export default function LandingPage() {
             <img src="/logo.png" alt="StatKeeper Logo" className="w-full h-full object-contain rounded-3xl" />
           </div>
 
-          <h1 className="text-4xl md:text-5xl font-black italic tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-purple-400 drop-shadow-lg mb-1">
+          <h1 className="text-4xl md:text-5xl font-black italic tracking-wide text-white drop-shadow-lg mb-1">
             StatKeeper
           </h1>
           <p className="text-sm md:text-base text-slate-400 max-w-lg mb-3">
@@ -205,27 +273,31 @@ export default function LandingPage() {
                 <span className="text-[10px] text-slate-600 uppercase tracking-widest hidden md:block">Top Performers</span>
               </div>
 
-              <div className="relative w-full flex overflow-x-auto pb-4 gap-3 px-4 custom-scrollbar snap-x">
-                {spotlightPlayers.map((player) => (
-                  <div key={player.id} className="min-w-[140px] md:min-w-[160px] snap-center">
-                    {/* Vertical Reel Card */}
-                    <div className="aspect-[9/16] w-full bg-slate-800 rounded-xl overflow-hidden shadow-lg border border-slate-700/50 relative group cursor-pointer hover:border-purple-500/50 transition-all hover:scale-[1.02] duration-300">
-                      {player.photoURL ? (
-                        <img src={player.photoURL} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-800 text-slate-600 gap-2">
-                          <span className="text-4xl">👤</span>
-                          {/* Small hint if no photo */}
+              <div className="relative w-full flex overflow-x-auto pt-6 pb-6 gap-6 px-4 custom-scrollbar snap-x">
+                {spotlightPlayers.map((player, idx) => (
+                  <div key={player.id} className="min-w-[140px] md:min-w-[160px] snap-center relative group">
+                    {/* Floating MVP Badge - ONLY FOR TOP 3 */}
+                    {idx < 3 && (
+                      <div className="absolute -top-3 -right-2 z-20 rotate-12 group-hover:animate-pulse">
+                        <div className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-black font-black text-[9px] px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.6)] border border-white ring-1 ring-yellow-400/50 flex items-center gap-1">
+                          <span>👑</span> MVP
                         </div>
-                      )}
-
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-90" />
-
-                      <div className="absolute bottom-0 left-0 right-0 p-3">
-                        <h3 className="text-white font-bold text-xs leading-tight truncate">{player.playerName}</h3>
-                        <p className="text-[10px] text-purple-400 font-medium truncate">{player.playerPosition || "Athlete"}</p>
                       </div>
-                    </div>
+                    )}
+                    <PlayerCardWeb
+                      player={{
+                        playerName: player.playerName,
+                        playerPosition: player.playerPosition,
+                        photoURL: player.photoURL,
+                        // Map potential stats if they exist in the player object
+                        avg: player.avg,
+                        hits: player.hits,
+                        ops: player.ops,
+                        playerNumber: player.playerNumber
+                      }}
+                      teamLogo={player.fetchedTeamLogo}
+                      badgeText=""
+                    />
                   </div>
                 ))}
               </div>
