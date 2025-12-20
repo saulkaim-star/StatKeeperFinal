@@ -3,12 +3,41 @@
 @tailwind utilities;
 
 :root {
+  /* StatKeeper Premium Dark - Enforced by default */
   --background: #0f172a;
+  /* Slate 900 */
   --foreground: #f8fafc;
+  /* Slate 50 */
+  --primary: #3b82f6;
+  /* Blue 500 */
+  --secondary: #10b981;
+  /* Emerald 500 */
 }
 
+/* Force dark background everywhere */
 body {
-  color: var(--foreground);
   background: var(--background);
+  color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar for premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  /* For horizontal scrollbars */
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
