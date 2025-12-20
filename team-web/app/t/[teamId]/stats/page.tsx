@@ -184,8 +184,8 @@ export default function TeamStatsPage({ params }: { params: { teamId: string } }
         const valB = b[sortConfig.key];
 
         // Handle string rates vs number counts
-        const numA = typeof valA === 'string' ? parseFloat(valA) : valA;
-        const numB = typeof valB === 'string' ? parseFloat(valB) : valB;
+        const numA = typeof valA === 'string' ? parseFloat(valA) : (valA ?? 0);
+        const numB = typeof valB === 'string' ? parseFloat(valB) : (valB ?? 0);
 
         if (numA < numB) return sortConfig.direction === 'asc' ? -1 : 1;
         if (numA > numB) return sortConfig.direction === 'asc' ? 1 : -1;
