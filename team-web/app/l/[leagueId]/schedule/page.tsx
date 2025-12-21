@@ -34,12 +34,20 @@ export default async function SchedulePage({ params }: { params: { leagueId: str
             <div className="space-y-8">
                 {/* Upcoming */}
                 {upcomingGames.length > 0 && (
-                    <ScheduleList games={upcomingGames} title="Upcoming Games" />
+                    <ScheduleList
+                        games={upcomingGames}
+                        title="Upcoming Games"
+                        cardClassName="!bg-slate-900 !rounded-3xl !shadow-2xl !border-2 !border-yellow-500/30 !shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:!border-yellow-400 hover:!shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300"
+                    />
                 )}
 
                 {/* Past Results */}
                 {pastGames.length > 0 && (
-                    <ScheduleList games={pastGames} title="Final Results" />
+                    <ScheduleList
+                        games={pastGames}
+                        title="Final Results"
+                        cardClassName="!bg-slate-900 !rounded-3xl !shadow-2xl !border-2 !border-yellow-500/30 !shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:!border-yellow-400 hover:!shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300"
+                    />
                 )}
 
                 {games.length === 0 && (

@@ -8,9 +8,10 @@ interface ScheduleListProps {
     title?: string;
     gridClassName?: string;
     variant?: 'list' | 'matchup';
+    cardClassName?: string;
 }
 
-export default function ScheduleList({ games, viewAllLink, title = "Recent Games", gridClassName, variant = 'list' }: ScheduleListProps) {
+export default function ScheduleList({ games, viewAllLink, title = "Recent Games", gridClassName, variant = 'list', cardClassName }: ScheduleListProps) {
     if (!games || games.length === 0) {
         return (
             <div className="bg-slate-800/50 backdrop-blur-sm shadow-xl rounded-2xl p-6 text-center border border-slate-700">
@@ -52,7 +53,7 @@ export default function ScheduleList({ games, viewAllLink, title = "Recent Games
 
             <div className={gridClassName || "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"}>
                 {games.map((game) => (
-                    <div key={game.id} className="bg-slate-800/50 backdrop-blur-sm shadow-lg rounded-2xl p-4 border border-slate-700 hover:bg-slate-800 transition-all group">
+                    <div key={game.id} className={`bg-slate-800/50 backdrop-blur-sm shadow-lg rounded-2xl p-4 border border-slate-700 hover:bg-slate-800 transition-all group ${cardClassName || ''}`}>
                         <div className="flex justify-between items-center mb-2">
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider ${game.status === 'completed'
                                 ? 'bg-slate-700 text-slate-300'

@@ -212,7 +212,7 @@ export default function LandingPage() {
                     <div
                       key={league.id}
                       onClick={() => handleSelectLeague(league.id)}
-                      className="min-w-[240px] md:min-w-[280px] snap-start bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-xl p-3 cursor-pointer hover:bg-slate-800/80 transition-all group flex items-center gap-3"
+                      className="min-w-[240px] md:min-w-[280px] snap-start p-3 cursor-pointer group flex items-center gap-3 !bg-slate-900 !rounded-3xl !shadow-2xl !border-2 !border-yellow-500/30 !shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:!border-yellow-400 hover:!shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300"
                     >
                       <div className="w-12 h-12 rounded-full bg-slate-900 border border-slate-700 overflow-hidden flex-shrink-0">
                         {league.logoUrl ? (
@@ -243,7 +243,7 @@ export default function LandingPage() {
                   <div
                     key={team.id}
                     onClick={() => handleSelectTeam(team.id)}
-                    className="min-w-[200px] md:min-w-[240px] snap-start bg-slate-800/30 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4 cursor-pointer hover:bg-slate-800/60 transition-all group flex flex-col items-center text-center"
+                    className="min-w-[200px] md:min-w-[240px] snap-start p-4 cursor-pointer group flex flex-col items-center text-center !bg-slate-900 !rounded-3xl !shadow-2xl !border-2 !border-yellow-500/30 !shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:!border-yellow-400 hover:!shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300"
                   >
                     <div className="w-16 h-16 mb-2 rounded-full bg-slate-900 border-2 border-slate-700 overflow-hidden flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-300">
                       {team.photoURL ? (

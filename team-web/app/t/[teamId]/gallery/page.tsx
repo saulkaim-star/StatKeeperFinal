@@ -397,7 +397,7 @@ export default function GalleryPage({ params }: { params: { teamId: string } }) 
                     return (
                         <div
                             key={post.id}
-                            className="group bg-slate-800/50 rounded-2xl p-3 border border-slate-700/50 hover:border-slate-600 transition-all hover:shadow-xl hover:shadow-blue-900/10 flex flex-col"
+                            className="group bg-slate-900 rounded-3xl p-3 border-2 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:border-yellow-400 hover:shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300 flex flex-col"
                         >
                             {/* Image Container */}
                             <div

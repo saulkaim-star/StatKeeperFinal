@@ -7,7 +7,7 @@ import { calculateAvg, calculateOPS } from "@/lib/helpers";
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { FaChartBar, FaImages } from "react-icons/fa";
+import { FaCalendarAlt, FaChartBar, FaFire, FaImages } from "react-icons/fa";
 
 interface TeamData {
     teamName: string;
@@ -33,8 +33,8 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
     const [team, setTeam] = useState<TeamData | null>(null);
     const [topPlayers, setTopPlayers] = useState<Player[]>([]);
     const [teamPosts, setTeamPosts] = useState<any[]>([]);
-    const [nextGame, setNextGame] = useState<any>(null);
-    const [lastGame, setLastGame] = useState<any>(null);
+    const [upcomingGames, setUpcomingGames] = useState<any[]>([]);
+    const [recentGames, setRecentGames] = useState<any[]>([]);
     const [record, setRecord] = useState({ w: 0, l: 0, t: 0 });
     const [loading, setLoading] = useState(true);
 
@@ -194,8 +194,8 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
                 const pastGames = sortedGames.filter(g => g.isFinal || (g.parsedDate && g.parsedDate < now));
                 const futureGames = sortedGames.filter(g => !g.isFinal && g.parsedDate && g.parsedDate >= now);
 
-                setLastGame(pastGames.length > 0 ? pastGames[pastGames.length - 1] : null);
-                setNextGame(futureGames.length > 0 ? futureGames[0] : null);
+                setRecentGames(pastGames.reverse()); // Show most recent first
+                setUpcomingGames(futureGames);
 
                 // Calc Record
                 let w = 0, l = 0, t = 0;
@@ -297,27 +297,39 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
                 </div>
             </section>
 
-            {/* 2. Game widgets (Next / Last) USING ScheduleList Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    {lastGame ? (
-                        <ScheduleList games={[lastGame]} title="Last Result" gridClassName="grid-cols-1" variant="matchup" />
-                    ) : (
-                        <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 text-center text-slate-500 text-sm italic">
-                            No games played yet.
+            {/* 2. Last Result (Full Width) */}
+            {/* 2. Recent Results (Full Width List) */}
+            {/* 2. Recent Results (Horizontal Scroll) */}
+            {recentGames.length > 0 ? (
+                <section>
+                    <div className="flex items-center justify-between mb-3 px-1">
+                        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                            <FaFire className="text-orange-500" /> Recent Results
+                        </h2>
+                    </div>
+                    <div className="overflow-x-auto pb-6 -mx-2 px-2 custom-scrollbar snap-x">
+                        <div className="flex gap-4 min-w-max">
+                            {recentGames.map(game => (
+                                <div key={game.id} className="w-[300px] snap-center relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:border-yellow-400 hover:shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300">
+                                    <ScheduleList
+                                        games={[game]}
+                                        variant="matchup"
+                                        title=""
+                                        gridClassName="grid-cols-1"
+                                        cardClassName="!border-0 !bg-transparent !shadow-none"
+                                    />
+                                </div>
+                            ))}
                         </div>
-                    )}
+                    </div>
+                </section>
+            ) : (
+                <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 text-center text-slate-500 text-sm italic">
+                    No games played yet.
                 </div>
-                <div>
-                    {nextGame ? (
-                        <ScheduleList games={[nextGame]} title="Next Game" gridClassName="grid-cols-1" variant="matchup" />
-                    ) : (
-                        <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 text-center text-slate-500 text-sm italic">
-                            No upcoming games.
-                        </div>
-                    )}
-                </div>
-            </div>
+            )}
+
+
 
             {/* 3. Team Leaders (Reusing PlayerCardWeb) */}
             <section>
@@ -347,6 +359,45 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
                 </div>
             </section>
 
+            {/* 4. Next Game (Full Width) */}
+            {/* 4. Upcoming Games (Full Width List) */}
+            {/* 6. Player Spotlight Reel (Moved Request) */}
+            <SpotlightReel
+                players={topPlayers.map(p => ({ ...p, fetchedTeamLogo: team.photoURL }))}
+                title={`${team.teamName} Spotlight`}
+                subtitle="Team Stars"
+            />
+
+            {/* 4. Upcoming Games (Horizontal Scroll) */}
+            {upcomingGames.length > 0 ? (
+                <section>
+                    <div className="flex items-center justify-between mb-3 px-1">
+                        <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                            <FaCalendarAlt className="text-blue-400" /> Upcoming Games
+                        </h2>
+                    </div>
+                    <div className="overflow-x-auto pb-6 -mx-2 px-2 custom-scrollbar snap-x">
+                        <div className="flex gap-4 min-w-max">
+                            {upcomingGames.map(game => (
+                                <div key={game.id} className="w-[300px] snap-center relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:border-yellow-400 hover:shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300">
+                                    <ScheduleList
+                                        games={[game]}
+                                        variant="matchup"
+                                        title=""
+                                        gridClassName="grid-cols-1"
+                                        cardClassName="!border-0 !bg-transparent !shadow-none"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            ) : (
+                <div className="bg-slate-800/50 p-8 rounded-2xl border border-slate-700 text-center text-slate-500 text-sm italic">
+                    No upcoming games.
+                </div>
+            )}
+
             {/* 4. Team Events (Feed) */}
             <section>
                 <div className="flex justify-between items-center mb-3 px-1">
@@ -359,7 +410,7 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
                         {teamPosts.map((post) => (
                             <div key={post.id} className="min-w-[140px] md:min-w-[160px] snap-center">
                                 <Link href={`/t/${params.teamId}/gallery?postId=${post.id}`} className="block h-full">
-                                    <div className="aspect-[9/16] w-full bg-slate-900 rounded-xl overflow-hidden border border-slate-700 relative group cursor-pointer hover:border-slate-500 transition-colors">
+                                    <div className="aspect-[9/16] w-full bg-slate-900 rounded-3xl overflow-hidden border-2 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)] relative group cursor-pointer hover:border-yellow-400 hover:shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300">
                                         {post.type === 'video' ? (
                                             <video src={post.mediaUrl} className="w-full h-full object-cover opacity-80" />
                                         ) : (
@@ -384,13 +435,8 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
 
 
 
-            {/* 6. Player Spotlight Reel (Added Request) */}
-            <SpotlightReel
-                players={topPlayers.map(p => ({ ...p, fetchedTeamLogo: team.photoURL }))}
-                title={`${team.teamName} Spotlight`}
-                subtitle="Team Stars"
-            />
 
-        </div>
+
+        </div >
     );
 }
