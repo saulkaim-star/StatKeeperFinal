@@ -6,7 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import SpInAppUpdates, { IAUUpdateKind } from 'sp-react-native-in-app-updates'; // <--- Importar librería 
+// import SpInAppUpdates, { IAUUpdateKind } from 'sp-react-native-in-app-updates'; // <--- DISABLED FOR WEB COMPATIBILITY
 
 // --- Importaciones de Pantallas (Tus importaciones originales) ---
 import AnnouncementsScreen from './src/screens/AnnouncementsScreen';
@@ -43,7 +43,7 @@ import TeamHubScreen from './src/screens/TeamHubScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// --- AuthStack y OnboardingStack (Sin cambios) ---
+// --- AuthStack y OnboardingStack ---
 const AuthStack = () => (
   <Stack.Navigator>
     <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
@@ -60,7 +60,7 @@ const OnboardingStack = () => (
   </Stack.Navigator>
 );
 
-// --- NAVEGACIÓN DEL MÁNAGER (Sin cambios) ---
+// --- NAVEGACIÓN DEL MÁNAGER ---
 const ManagerTabNavigator = () => {
   const [teamInfo, setTeamInfo] = useState({ id: null, name: null, loading: true });
   useEffect(() => {
@@ -106,7 +106,7 @@ const ManagerTabNavigator = () => {
   );
 };
 
-// --- ManagerStack (Sin cambios) ---
+// --- ManagerStack ---
 const ManagerStack = () => (
   <Stack.Navigator>
     <Stack.Screen name="ManagerTabs" component={ManagerTabNavigator} options={{ headerShown: false }} />
@@ -133,7 +133,7 @@ const ManagerStack = () => (
   </Stack.Navigator>
 );
 
-// --- NAVEGACIÓN DEL JUGADOR (Sin cambios) ---
+// --- NAVEGACIÓN DEL JUGADOR ---
 const PlayerTabNavigator = () => {
   const [teamInfo, setTeamInfo] = useState({ teamId: null, loading: true, error: null });
   useEffect(() => {
@@ -178,7 +178,7 @@ const PlayerTabNavigator = () => {
   );
 };
 
-// --- PlayerStack (Sin cambios, ya corregido) ---
+// --- PlayerStack ---
 const PlayerStack = () => (
   <Stack.Navigator>
     <Stack.Screen name="PlayerTabs" component={PlayerTabNavigator} options={{ headerShown: false }} />
@@ -195,7 +195,7 @@ const PlayerStack = () => (
   </Stack.Navigator>
 );
 
-// --- NAVEGACIÓN DEL ORGANIZADOR (Sin cambios) ---
+// --- NAVEGACIÓN DEL ORGANIZADOR ---
 const OrganizerTabNavigator = () => {
   const [competitionId, setCompetitionId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -249,7 +249,7 @@ const CreateCompetitionStack = () => (
   </Stack.Navigator>
 );
 
-// --- LoadingScreen (Sin cambios) ---
+// --- LoadingScreen ---
 const LoadingScreen = () => (
   <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f5f7fa' }}>
     <ActivityIndicator size="large" color="#3b82f6" />
@@ -257,38 +257,19 @@ const LoadingScreen = () => (
   </View>
 );
 
-// --- Componente Principal App (¡CORREGIDO!) ---
+// --- Componente Principal App ---
 function App() {
   const [userState, setUserState] = useState({ isLoading: true, user: null, profile: null });
 
-  // --- useEffect de Autenticación (¡MODIFICADO!) ---
+  // --- useEffect de Autenticación ---
   useEffect(() => {
-    // 0. --- VERIFICACIÓN DE ACTUALIZACIONES (NUEVO) ---
+    // 0. --- VERIFICACIÓN DE ACTUALIZACIONES (DISABLED FOR WEB) ---
+    /*
     const checkForUpdates = async () => {
-      const inAppUpdates = new SpInAppUpdates(
-        false // isDebug (ponlo en true si quieres probar en debug, pero suele requerir build real)
-      );
-
-      try {
-        const result = await inAppUpdates.checkNeedsUpdate();
-
-        if (result.shouldUpdate) {
-          console.log("App.tsx: Update available!");
-          // Opciones: IAUUpdateKind.FLEXIBLE (segundo plano) o IAUUpdateKind.IMMEDIATE (bloqueante)
-          // Para asegurar que todos tengan la última versión, usamos IMMEDIATE.
-          await inAppUpdates.startUpdate({
-            updateType: IAUUpdateKind.IMMEDIATE,
-          });
-        } else {
-          console.log("App.tsx: App is up to date.");
-        }
-      } catch (error) {
-        // En desarrollo es normal que falle si no está firmada con la key de la tienda.
-        console.log("App.tsx: Update check skipped or failed (expected in dev):", error);
-      }
+      // Logic removed for web compatibility
     };
-
     checkForUpdates();
+    */
 
     let firestoreSubscriber = () => { };
 
@@ -390,13 +371,12 @@ function App() {
 
   if (userState.isLoading) { return <LoadingScreen />; }
 
-  // --- Lógica de Renderizado de Stacks (¡Corregido el error de dedo!) ---
+  // --- Lógica de Renderizado de Stacks ---
   let stackToRender;
   if (userState.user) {
     if (userState.profile && userState.profile.role) {
       switch (userState.profile.role) {
         case 'manager':
-          // (Corregido el error de dedo 'userS0tate')
           if (userState.profile.teams?.length > 0) { stackToRender = <Stack.Screen name="ManagerRoot" component={ManagerStack} />; }
           else { stackToRender = <Stack.Screen name="OnboardingRoot" component={OnboardingStack} initialParams={{ screen: 'CreateTeam' }} />; }
           break;

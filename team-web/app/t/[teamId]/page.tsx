@@ -1,12 +1,13 @@
 "use client";
 import PlayerCardWeb from "@/components/PlayerCardWeb";
 import ScheduleList from "@/components/ScheduleList";
+import SpotlightReel from "@/components/SpotlightReel";
 import { db } from "@/lib/firebase";
 import { calculateAvg, calculateOPS } from "@/lib/helpers";
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { FaCalendarAlt, FaChartBar, FaImages } from "react-icons/fa";
+import { FaChartBar, FaImages } from "react-icons/fa";
 
 interface TeamData {
     teamName: string;
@@ -243,7 +244,8 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
                 }));
 
                 const sortedStats = [...playersArray].sort((a, b) => parseFloat(String(b.avg)) - parseFloat(String(a.avg)));
-                setTopPlayers(sortedStats.slice(0, 3));
+                // Update: Fetch more players to populate the Spotlight Reel (e.g., top 15)
+                setTopPlayers(sortedStats.slice(0, 15));
                 setLoading(false);
 
             } catch (e) {
@@ -326,7 +328,8 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-6">
-                    {topPlayers.map((player, idx) => (
+                    {/* Slice top 3 for this grid view to maintain layout */}
+                    {topPlayers.slice(0, 3).map((player, idx) => (
                         <div key={player.id} className="w-[45%] md:w-[30%] lg:w-[22%] max-w-[280px] transform hover:scale-105 transition-transform duration-300 relative group">
                             <div className="absolute -top-3 -right-2 z-20 rotate-12 animate-pulse">
                                 <div className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-black font-black text-[10px] sm:text-xs px-2 sm:px-3 py-1 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.6)] border-2 border-white ring-2 ring-yellow-400/50 flex items-center gap-1">
@@ -379,17 +382,14 @@ export default function TeamHome({ params }: { params: { teamId: string } }) {
                 )}
             </section>
 
-            {/* 5. Quick Links Grid */}
-            <div className="grid grid-cols-2 gap-4">
-                <Link href={`/t/${params.teamId}/gallery`} className="bg-slate-800/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-slate-700 transition-all group text-center flex flex-col items-center justify-center gap-2">
-                    <FaImages className="text-2xl text-purple-400 group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-bold text-slate-300">Full Gallery</span>
-                </Link>
-                <Link href={`/t/${params.teamId}/schedule`} className="bg-slate-800/40 hover:bg-slate-800/60 p-4 rounded-2xl border border-slate-700 transition-all group text-center flex flex-col items-center justify-center gap-2">
-                    <FaCalendarAlt className="text-2xl text-slate-500 group-hover:text-white transition-colors" />
-                    <span className="text-sm font-bold text-slate-300">Full Schedule</span>
-                </Link>
-            </div>
+
+
+            {/* 6. Player Spotlight Reel (Added Request) */}
+            <SpotlightReel
+                players={topPlayers.map(p => ({ ...p, fetchedTeamLogo: team.photoURL }))}
+                title={`${team.teamName} Spotlight`}
+                subtitle="Team Stars"
+            />
 
         </div>
     );

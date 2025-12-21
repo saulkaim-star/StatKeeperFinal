@@ -1,5 +1,6 @@
 import PlayerCardWeb from "@/components/PlayerCardWeb";
 import ScheduleList from "@/components/ScheduleList";
+import SpotlightReel from "@/components/SpotlightReel";
 import { getLeagueData } from "@/lib/leagueService";
 import Link from "next/link";
 import { FaCalendarAlt, FaChartBar, FaFire, FaListOl } from "react-icons/fa";
@@ -146,18 +147,20 @@ export default async function LeagueHome({ params }: { params: { leagueId: strin
                                 <tbody className="divide-y divide-slate-800">
                                     {standings.slice(0, 10).map((team, index) => (
                                         <tr key={team.teamId} className={`hover:bg-slate-800/40 transition-colors ${index < 4 ? 'bg-emerald-500/5' : ''}`}>
-                                            <td className="px-6 py-4 font-medium text-white flex items-center gap-4">
-                                                <span className={`text-sm font-bold w-6 ${index < 4 ? 'text-emerald-400' : 'text-slate-500'}`}>{index + 1}</span>
-                                                <Link href={`/t/${team.teamId}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-                                                    <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden flex-shrink-0 border border-slate-600">
-                                                        {team.logoURL ? (
-                                                            <img src={team.logoURL} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="flex items-center justify-center w-full h-full text-xs">⚾</div>
-                                                        )}
-                                                    </div>
-                                                    <span className="truncate max-w-[150px] sm:max-w-xs text-base hover:text-blue-400 hover:underline">{team.teamName}</span>
-                                                </Link>
+                                            <td className="px-6 py-4 font-medium text-white">
+                                                <div className="flex items-center gap-4">
+                                                    <span className={`text-sm font-bold w-6 ${index < 4 ? 'text-emerald-400' : 'text-slate-500'}`}>{index + 1}</span>
+                                                    <Link href={`/t/${team.teamId}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+                                                        <div className="w-12 h-12 rounded-full bg-slate-700 overflow-hidden flex-shrink-0 border border-slate-600">
+                                                            {team.logoURL ? (
+                                                                <img src={team.logoURL} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="flex items-center justify-center w-full h-full text-xs">⚾</div>
+                                                            )}
+                                                        </div>
+                                                        <span className="truncate max-w-[150px] sm:max-w-xs text-base hover:text-blue-400 hover:underline">{team.teamName}</span>
+                                                    </Link>
+                                                </div>
                                             </td>
                                             <td className="px-4 py-4 text-center font-bold text-white text-base">{team.wins}</td>
                                             <td className="px-4 py-4 text-center text-slate-400 text-base">{team.losses}</td>
@@ -195,13 +198,15 @@ export default async function LeagueHome({ params }: { params: { leagueId: strin
                                 <tbody className="divide-y divide-slate-800">
                                     {topBatters.slice(0, 10).map((player, index) => (
                                         <tr key={player.id} className="hover:bg-slate-800/40 transition-colors">
-                                            <td className="px-6 py-3 font-medium text-white flex items-center gap-3">
-                                                <span className={`text-sm font-bold w-6 ${index < 3 ? 'text-yellow-500' : 'text-slate-500'}`}>{index + 1}</span>
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-bold truncate max-w-[120px]">{player.playerName}</span>
-                                                    <div className="flex items-center gap-1 text-xs text-slate-400">
-                                                        {player.teamLogo && <img src={player.teamLogo} className="w-6 h-6 rounded-full" />}
-                                                        {player.teamName}
+                                            <td className="px-6 py-3 font-medium text-white">
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`text-sm font-bold w-6 ${index < 3 ? 'text-yellow-500' : 'text-slate-500'}`}>{index + 1}</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-bold truncate max-w-[120px]">{player.playerName}</span>
+                                                        <div className="flex items-center gap-1 text-xs text-slate-400">
+                                                            {player.teamLogo && <img src={player.teamLogo} className="w-6 h-6 rounded-full" />}
+                                                            {player.teamName}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
@@ -225,15 +230,20 @@ export default async function LeagueHome({ params }: { params: { leagueId: strin
                     </h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto w-full">
+                <div className="flex flex-wrap justify-center gap-6 w-full">
                     {leagueLeaders.slice(0, 3).map((leader) => (
-                        <div key={leader.stat} className="flex flex-col gap-2">
-                            <div className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold text-center bg-slate-800/50 py-1 rounded-lg border border-slate-700/50">
+                        <div key={leader.stat} className="w-[45%] md:w-[30%] lg:w-[22%] max-w-[280px] transform hover:scale-105 transition-transform duration-300 relative group">
+                            <div className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold text-center bg-slate-800/50 py-1 rounded-lg border border-slate-700/50 mb-2">
                                 {leader.stat} Leader
                             </div>
                             {leader.player ? (
-                                <div className="hover:scale-105 transition-transform duration-300 h-full">
-                                    <PlayerCardWeb player={leader.player} teamLogo={leader.teamLogo} badgeText="MVP" />
+                                <div className="hover:scale-105 transition-transform duration-300 h-full relative group">
+                                    <div className="absolute -top-3 -right-2 z-20 rotate-12 animate-pulse">
+                                        <div className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-black font-black text-[10px] sm:text-xs px-2 sm:px-3 py-1 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.6)] border-2 border-white ring-2 ring-yellow-400/50 flex items-center gap-1">
+                                            <span>👑</span> MVP #{['Batting Average', 'Home Runs', 'OPS'][['avg', 'hr', 'ops'].indexOf(leader.stat)] ? (['avg', 'hr', 'ops'].indexOf(leader.stat) + 1) : ''}
+                                        </div>
+                                    </div>
+                                    <PlayerCardWeb player={leader.player} teamLogo={leader.teamLogo} />
                                 </div>
                             ) : (
                                 <div className="aspect-[9/16] bg-slate-900 rounded-2xl border border-slate-800 flex flex-col items-center justify-center p-4 text-center shadow-lg h-full">
@@ -268,7 +278,12 @@ export default async function LeagueHome({ params }: { params: { leagueId: strin
                 </section>
             )}
 
-
+            {/* 6. Spotlight Reel (Bottom) */}
+            <SpotlightReel
+                players={topBatters.map(p => ({ ...p, fetchedTeamLogo: p.teamLogo || null }))}
+                title={`${info.name} Top Players`}
+                subtitle="League Stars"
+            />
 
         </div>
     );

@@ -2,8 +2,9 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useLayoutEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Button, Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Button, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PlayerCard from '../components/PlayerCard';
 import { handleDeleteAccount } from '../utils/authUtils';
 
 // --- Pequeños componentes para el Dashboard (Sin cambios) ---
@@ -83,7 +84,9 @@ const PlayerHomeScreen = () => {
     const [playerNumber, setPlayerNumber] = useState(null);
     const [playerPosition, setPlayerPosition] = useState(null);
     const [photoURL, setPhotoURL] = useState(null);
+    const [teamLogo, setTeamLogo] = useState(null);
     const [playerRosterId, setPlayerRosterId] = useState(null);
+    const [cardVisible, setCardVisible] = useState(false);
 
     const handleLogout = () => { auth().signOut(); };
 
@@ -137,6 +140,14 @@ const PlayerHomeScreen = () => {
         const currentUser = auth().currentUser;
         if (!currentUser) return;
 
+        // Listener para el Logo del Equipo
+        const teamSubscriber = firestore().collection('teams').doc(teamId)
+            .onSnapshot(doc => {
+                if (doc.exists) {
+                    setTeamLogo(doc.data().photoURL || null);
+                }
+            }, err => console.error("Error fetching team logo:", err));
+
         const rosterSubscriber = firestore().collection('teams').doc(teamId).collection('roster')
             .where('userId', '==', currentUser.uid).limit(1)
             .onSnapshot(rosterSnap => {
@@ -149,11 +160,6 @@ const PlayerHomeScreen = () => {
                     setPlayerNumber(rosterData.playerNumber || null);
                     setPlayerPosition(rosterData.playerPosition || null);
                     setPhotoURL(rosterData.photoURL || null);
-
-                    // --- ¡¡¡CORRECCIÓN APLICADA!!! ---
-                    // El bloque que calculaba stats desde el roster (poniéndolos a 0)
-                    // ha sido eliminado de aquí.
-                    // --- FIN DE LA CORRECCIÓN ---
 
                     setLoading(false);
 
@@ -188,6 +194,7 @@ const PlayerHomeScreen = () => {
             }, err => console.error("Error fetching competition link:", err));
 
         return () => {
+            teamSubscriber();
             rosterSubscriber();
             announcementSubscriber();
             pollSubscriber();
@@ -257,8 +264,16 @@ const PlayerHomeScreen = () => {
                     }
                 }
             });
+
+            // OPS Calculation
+            const singles = stats.hits - (stats.doubles + stats.triples + stats.homeruns);
+            const totalBases = singles + (2 * stats.doubles) + (3 * stats.triples) + (4 * stats.homeruns);
+            const slg = stats.ab > 0 ? totalBases / stats.ab : 0;
+            const obp = (stats.ab + stats.walks) > 0 ? (stats.hits + stats.walks) / (stats.ab + stats.walks) : 0;
+            const ops = (slg + obp).toFixed(3).replace(/^0/, '');
+
             const avg = stats.ab > 0 ? (stats.hits / stats.ab).toFixed(3).replace(/^0/, '') : '.000';
-            setPlayerStats({ ...stats, avg });
+            setPlayerStats({ ...stats, avg, ops });
         };
 
         const homeGamesQuery = firestore().collection('competition_games').where('competitionId', '==', competitionId).where('homeTeamId', '==', teamId).where('status', '==', 'completed');
@@ -291,25 +306,21 @@ const PlayerHomeScreen = () => {
     // --- FIN DE LA LÓGICA DE LISTENERS ---
 
     // --- Función para el Botón Web (Sin cambios) ---
-    const handleOpenWebDashboard = async () => {
-        if (!competitionId) {
-            Alert.alert("Error", "Cannot open web dashboard. You are not in a competition.");
-            return;
-        }
-        const vercelURL = 'https://statkeeper-liga-webbaseball.vercel.app';
-        const webDashboardUrl = `${vercelURL}/liga/${competitionId}`;
+    // --- Funciones para Botones Web (NUEVO) ---
+    const handleOpenTeamPage = async () => {
+        if (!teamId) return;
+        const vercelURL = 'https://team-web-steel.vercel.app';
+        const url = `${vercelURL}/t/${teamId}`;
+        try { await Linking.openURL(url); }
+        catch (err) { Alert.alert("Error", "Failed to open team page."); }
+    };
 
-        try {
-            const supported = await Linking.canOpenURL(webDashboardUrl);
-            if (supported) {
-                await Linking.openURL(webDashboardUrl);
-            } else {
-                Alert.alert("Error", `Don't know how to open this URL: ${webDashboardUrl}`);
-            }
-        } catch (err) {
-            console.error("Failed to open web URL:", err);
-            Alert.alert("Error", "Failed to open the link.");
-        }
+    const handleOpenLeaguePage = async () => {
+        if (!competitionId) return;
+        const vercelURL = 'https://team-web-steel.vercel.app';
+        const url = `${vercelURL}/l/${competitionId}`;
+        try { await Linking.openURL(url); }
+        catch (err) { Alert.alert("Error", "Failed to open league page."); }
     };
 
 
@@ -346,6 +357,9 @@ const PlayerHomeScreen = () => {
                     <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditPlayerProfile')}>
                         <Text style={styles.editButtonText}>✏️</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity style={styles.cameraButton} onPress={() => setCardVisible(true)}>
+                        <Text style={styles.cameraButtonText}>📷</Text>
+                    </TouchableOpacity>
                 </View>
 
 
@@ -366,10 +380,34 @@ const PlayerHomeScreen = () => {
                     <View style={styles.center}><ActivityIndicator size="small" color="#3b82f6" /></View>
                 )}
 
+                {/* --- BOTONES DE ENLACE WEB (MOVIDO AQUÍ) --- */}
+                <View style={{ padding: 20 }}>
+                    <TouchableOpacity
+                        style={[styles.webButton, { backgroundColor: '#3b82f6', marginBottom: 10 }]}
+                        onPress={handleOpenTeamPage}
+                    >
+                        <Text style={styles.webButtonText}>
+                            ⚾ View Team Dashboard
+                        </Text>
+                    </TouchableOpacity>
+
+                    {competitionId && (
+                        <TouchableOpacity
+                            style={[styles.webButton, { backgroundColor: '#10B981' }]}
+                            onPress={handleOpenLeaguePage}
+                        >
+                            <Text style={styles.webButtonText}>
+                                🏆 View League Dashboard
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
                 {/* --- Tarjetas de Dashboard --- */}
                 <NextGame game={nextGame} navigation={navigation} />
                 <RecentAnnouncements announcements={recentAnnouncements} navigation={navigation} />
                 <LatestPoll poll={latestPoll} teamId={teamId} navigation={navigation} />
+
 
                 <View style={{ height: 10 }} />
 
@@ -386,6 +424,36 @@ const PlayerHomeScreen = () => {
                 </View>
 
             </ScrollView>
+
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={cardVisible}
+                onRequestClose={() => setCardVisible(false)}
+            >
+                <View style={styles.modalContainer}>
+                    {/* Botón de cerrar Absoluto y con ZIndex alto */}
+                    <TouchableOpacity style={styles.closeModalButton} onPress={() => setCardVisible(false)}>
+                        <Text style={styles.closeModalText}>X</Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.modalContent}>
+                        <PlayerCard
+                            player={{
+                                playerName,
+                                playerNumber,
+                                playerPosition,
+                                photoURL,
+                                avg: playerStats?.avg || '.000',
+                                homeruns: playerStats?.homeruns || 0,
+                                hits: playerStats?.hits || 0,
+                                ops: playerStats?.ops || '.000'
+                            }}
+                            teamLogo={teamLogo}
+                        />
+                    </View>
+                </View>
+            </Modal>
 
         </SafeAreaView>
     );
@@ -443,6 +511,43 @@ const styles = StyleSheet.create({
     },
     editButtonText: {
         fontSize: 20,
+    },
+    cameraButton: {
+        padding: 8,
+        borderRadius: 20,
+        backgroundColor: '#e0f2fe',
+        marginLeft: 10,
+    },
+    cameraButtonText: {
+        fontSize: 20,
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalContent: {
+        // backgroundColor: 'transparent',
+        alignItems: 'center',
+    },
+    closeModalButton: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        backgroundColor: 'rgba(255,255,255,0.9)',
+        borderRadius: 25,
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 9999, // Asegurar que esté encima
+        elevation: 10
+    },
+    closeModalText: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#ef4444',
     },
     sectionTitle: {
         fontSize: 16,

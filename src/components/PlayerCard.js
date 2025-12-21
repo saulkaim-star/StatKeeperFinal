@@ -1,8 +1,13 @@
-import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
+import { Button, Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import Share from 'react-native-share';
+import ViewShot from 'react-native-view-shot';
 
 const { width } = Dimensions.get('window');
 
-const PlayerCard = ({ player }) => {
+const PlayerCard = ({ player, teamLogo }) => {
+    const viewShotRef = useRef();
+
     if (!player) return null;
 
     const {
@@ -11,200 +16,240 @@ const PlayerCard = ({ player }) => {
         playerPosition,
         photoURL,
         avg,
-        homeruns,
+        ops,
         hits,
     } = player;
 
+    const handleShare = async () => {
+        try {
+            const uri = await viewShotRef.current.capture();
+            const shareOptions = {
+                title: 'Share Player Card',
+                url: uri,
+                failOnCancel: false,
+            };
+            await Share.open(shareOptions);
+        } catch (error) {
+            console.error("Error sharing:", error);
+        }
+    };
+
     return (
-        <View style={styles.cardContainer}>
-            {/* Header Band */}
-            <View style={styles.headerBand}>
-                <Text style={styles.teamName}>TEAM STATS</Text>
-            </View>
+        <View style={styles.container}>
+            <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 1.0 }} style={styles.cardContainer}>
+                {/* Decorative Background Elements */}
+                <View style={styles.bgGlow} />
 
-            {/* Main Content */}
-            <View style={styles.imageContainer}>
-                {photoURL ? (
-                    <Image source={{ uri: photoURL }} style={styles.playerImage} />
-                ) : (
-                    <View style={styles.placeholderImage}>
-                        <Text style={styles.placeholderText}>No Photo</Text>
+                {/* Header: Team Logo & Player Info */}
+                <View style={styles.header}>
+                    <View style={styles.logoContainer}>
+                        {teamLogo ? (
+                            <Image source={{ uri: teamLogo }} style={styles.teamLogo} />
+                        ) : (
+                            <View style={styles.logoPlaceholder}><Text style={styles.logoText}>TEAM</Text></View>
+                        )}
                     </View>
-                )}
-            </View>
-
-            {/* Info Overlay */}
-            <View style={styles.infoContainer}>
-                <View style={styles.nameRow}>
-                    <Text style={styles.playerName}>{playerName || 'Unknown Player'}</Text>
-                    <Text style={styles.playerNumber}>#{playerNumber || '00'}</Text>
+                    <View style={styles.headerInfo}>
+                        <Text style={styles.headerName}>{playerName}</Text>
+                        <Text style={styles.headerPosition}>{playerPosition} {playerNumber ? `| #${playerNumber}` : ''}</Text>
+                    </View>
                 </View>
-                <Text style={styles.playerPosition}>{playerPosition || 'N/A'}</Text>
 
-                <View style={styles.separator} />
+                {/* Main Image */}
+                <View style={styles.imageWrapper}>
+                    {photoURL ? (
+                        <Image source={{ uri: photoURL }} style={styles.playerImage} />
+                    ) : (
+                        <View style={styles.placeholderImage}>
+                            <Text style={styles.placeholderText}>NO PHOTO</Text>
+                        </View>
+                    )}
+                </View>
 
-                {/* Stats Row */}
-                <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
+                {/* Stats Footer */}
+                <View style={styles.statsContainer}>
+                    {/* AVG - Green */}
+                    <View style={[styles.statBox, styles.statBoxGreen]}>
+                        <Text style={styles.statValue}>{avg}</Text>
                         <Text style={styles.statLabel}>AVG</Text>
-                        <Text style={styles.statValue}>{avg || '.000'}</Text>
                     </View>
-                    <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>HR</Text>
-                        <Text style={styles.statValue}>{homeruns || '0'}</Text>
-                    </View>
-                    <View style={styles.statItem}>
+
+                    {/* HITS - Orange (Fire) */}
+                    <View style={[styles.statBox, styles.statBoxOrange]}>
+                        <View style={styles.statBoxFire}><Text style={{ fontSize: 10 }}>🔥</Text></View>
+                        <Text style={styles.statValue}>{hits}</Text>
                         <Text style={styles.statLabel}>HITS</Text>
-                        <Text style={styles.statValue}>{hits || '0'}</Text>
+                    </View>
+
+                    {/* OPS - Blue */}
+                    <View style={[styles.statBox, styles.statBoxBlue]}>
+                        <Text style={styles.statValue}>{ops}</Text>
+                        <Text style={styles.statLabel}>OPS</Text>
                     </View>
                 </View>
-            </View>
 
-            {/* Decorative Elements */}
-            <View style={styles.cornerDecorTopLeft} />
-            <View style={styles.cornerDecorBottomRight} />
+                {/* Branding Footer */}
+                <View style={styles.brandingFooter}>
+                    <Image source={require('../../assets/icon.png')} style={styles.footerLogo} />
+                    <View>
+                        <Text style={styles.brandingText}>StatKeeper</Text>
+                        <Text style={styles.brandingSubText}>OFFICIAL DATA</Text>
+                    </View>
+                </View>
+
+            </ViewShot>
+
+            {/* Share Button (Outside ViewShot) */}
+            <View style={styles.shareButtonContainer}>
+                <Button title="Share to Stories" onPress={handleShare} color="#3b82f6" />
+            </View>
         </View>
     );
 };
 
 const styles = StyleSheet.create({
+    container: {
+        alignItems: 'center',
+        flex: 1,
+        justifyContent: 'center'
+    },
     cardContainer: {
-        width: width * 0.85,
-        backgroundColor: '#1f2937', // Dark slate
+        width: width * 0.9,
+        aspectRatio: 9 / 16,
+        backgroundColor: '#0f172a', // Dark Navy Background
+        borderRadius: 24,
+        padding: 20,
+        alignItems: 'center',
+        elevation: 10,
+        justifyContent: 'space-between',
+        overflow: 'hidden',
+        borderWidth: 4, // Thicker Gold Border
+        borderColor: 'rgba(234, 179, 8, 0.5)', // Increased opacity for shine
+    },
+    bgGlow: {
+        position: 'absolute',
+        top: -100,
+        right: -100,
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    },
+    header: {
+        flexDirection: 'row',
+        width: '100%',
+        alignItems: 'center',
+        marginBottom: 15,
+        paddingHorizontal: 5,
+        marginTop: 10
+    },
+    logoContainer: {
+        width: 80,
+        height: 80,
+        marginRight: 15,
+        borderRadius: 40,
+        overflow: 'hidden',
+        backgroundColor: '#1e293b',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)'
+    },
+    teamLogo: { width: '100%', height: '100%' },
+    logoPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    logoText: { color: 'gray', fontSize: 10 },
+    headerInfo: { flex: 1 },
+    headerName: { color: 'white', fontSize: 26, fontWeight: '800', letterSpacing: 0.5 },
+    headerPosition: { color: '#94a3b8', fontSize: 16, fontWeight: '600', marginTop: 2 },
+
+    imageWrapper: {
+        width: '100%',
+        flex: 1,
+        backgroundColor: '#1e293b',
         borderRadius: 20,
         overflow: 'hidden',
-        alignSelf: 'center',
-        elevation: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        borderWidth: 2,
-        borderColor: '#374151',
-        aspectRatio: 0.65, // Portrait card ratio
-    },
-    headerBand: {
-        backgroundColor: '#3b82f6', // Bright blue
-        paddingVertical: 10,
-        alignItems: 'center',
-        marginBottom: -15,
-        zIndex: 10,
-        transform: [{ skewY: '-3deg' }],
-        marginTop: 10,
-        marginHorizontal: -10,
-    },
-    teamName: {
-        color: 'white',
-        fontWeight: '900',
-        fontSize: 16,
-        letterSpacing: 2,
-        transform: [{ skewY: '3deg' }], // Counter skew text
-    },
-    imageContainer: {
-        flex: 3,
-        backgroundColor: '#e5e7eb',
-        justifyContent: 'center',
-        alignItems: 'center',
-        margin: 15,
-        marginBottom: 0,
-        borderRadius: 15,
-        overflow: 'hidden',
         borderWidth: 1,
-        borderColor: '#4b5563',
+        borderColor: '#334155',
+        marginBottom: 20,
+        marginTop: 5,
+        position: 'relative'
     },
-    playerImage: {
+    playerImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+    placeholderImage: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    placeholderText: { color: '#64748b', fontWeight: 'bold', fontSize: 18 },
+    appLogoOverlay: {
+        position: 'absolute',
+        bottom: 10,
+        right: 15,
+        width: 40,
+        height: 40,
+        opacity: 0.5,
+        borderRadius: 20
+    },
+
+    statsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
         width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
+        marginBottom: 25
     },
-    placeholderImage: {
-        flex: 1,
+    statBox: {
+        width: '31%',
+        paddingVertical: 15,
+        borderRadius: 16,
+        alignItems: 'center',
         justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#9ca3af',
+        borderWidth: 1.5,
     },
-    placeholderText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    infoContainer: {
-        flex: 2,
-        padding: 20,
-        justifyContent: 'flex-start',
-    },
-    nameRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    playerName: {
-        color: 'white',
-        fontSize: 24,
-        fontWeight: 'bold',
-        flex: 1,
-        flexWrap: 'wrap',
-    },
-    playerNumber: {
-        color: '#fbbf24', // Amber/Gold
-        fontSize: 32,
-        fontWeight: '900',
-        textShadowColor: 'rgba(0,0,0,0.5)',
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 2,
-    },
-    playerPosition: {
-        color: '#9ca3af',
-        fontSize: 16,
-        textTransform: 'uppercase',
-        fontWeight: '600',
-        marginTop: 2,
-    },
-    separator: {
-        height: 1,
-        backgroundColor: '#374151',
-        marginVertical: 15,
-    },
-    statsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-    },
-    statItem: {
-        alignItems: 'center',
-    },
-    statLabel: {
-        color: '#6b7280',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
+    statBoxGreen: { borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)' },
+    statBoxOrange: { borderColor: '#f97316', backgroundColor: 'rgba(249, 115, 22, 0.15)' },
+    statBoxBlue: { borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)' },
+    statBoxFire: { position: 'absolute', top: -10, alignSelf: 'center', backgroundColor: '#0f172a', paddingHorizontal: 4, borderRadius: 10 },
+
     statValue: {
+        fontSize: 28,
+        fontWeight: '900',
         color: 'white',
-        fontSize: 22,
+        marginBottom: 2,
+        textShadowColor: 'rgba(255, 255, 255, 0.5)',
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 10
+    },
+    statLabel: { fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', color: 'rgba(255,255,255,0.8)' },
+
+    brandingFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 10,
+        justifyContent: 'center'
+    },
+    footerLogo: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginRight: 10,
+        opacity: 0.6
+    },
+    brandingText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '900',
+        letterSpacing: 0,
+        fontStyle: 'italic',
+        lineHeight: 24,
+        includeFontPadding: false
+    },
+    brandingSubText: {
+        color: '#64748b',
+        fontSize: 10,
         fontWeight: 'bold',
+        letterSpacing: 2,
+        marginTop: 0
     },
-    cornerDecorTopLeft: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: 0,
-        height: 0,
-        borderStyle: 'solid',
-        borderRightWidth: 40,
-        borderTopWidth: 40,
-        borderRightColor: 'transparent',
-        borderTopColor: '#fbbf24', // Gold
-    },
-    cornerDecorBottomRight: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        width: 0,
-        height: 0,
-        borderStyle: 'solid',
-        borderLeftWidth: 40,
-        borderBottomWidth: 40,
-        borderLeftColor: 'transparent',
-        borderBottomColor: '#3b82f6', // Blue
-    },
+
+    shareButtonContainer: {
+        marginTop: 15,
+        width: '100%',
+        marginBottom: 20
+    }
 });
 
 export default PlayerCard;

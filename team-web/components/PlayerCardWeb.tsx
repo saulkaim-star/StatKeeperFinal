@@ -18,8 +18,18 @@ interface PlayerCardWebProps {
 }
 
 export default function PlayerCardWeb({ player, teamLogo, badgeText }: PlayerCardWebProps) {
+    // Logic to show placeholder "Pro" stats if the player has 0 stats
+    const pAvg = Number(player.avg) || 0;
+    const pHits = Number(player.hits) || 0;
+    const pOps = Number(player.ops) || 0;
+    const isZeroStats = pAvg === 0 && pHits === 0 && pOps === 0;
+
+    const displayAvg = isZeroStats ? '.430' : (player.avg || '.000');
+    const displayHits = isZeroStats ? '10' : (player.hits || '0');
+    const displayOps = isZeroStats ? '1.200' : (player.ops || '.000');
+
     return (
-        <div className="relative w-full aspect-[9/16] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-700/50 flex flex-col">
+        <div className="relative w-full aspect-[9/16] bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.2)] flex flex-col hover:border-yellow-400 hover:shadow-[0_0_30px_rgba(234,179,8,0.4)] transition-all duration-300">
 
             {/* Ambient Glow */}
             <div className="absolute -top-20 -right-20 w-64 h-64 bg-blue-500/20 blur-[80px] rounded-full pointer-events-none" />
@@ -34,19 +44,19 @@ export default function PlayerCardWeb({ player, teamLogo, badgeText }: PlayerCar
             )}
 
             {/* Header - Compact */}
-            <div className="px-4 pt-3 pb-1 flex items-center gap-3 z-10 mt-1">
-                <div className="w-16 h-16 bg-slate-800 rounded-full border border-white/10 overflow-hidden relative flex-shrink-0">
+            <div className="px-3 pt-3 pb-1 flex items-center gap-2 z-10 mt-1">
+                <div className="w-10 h-10 bg-slate-800 rounded-full border border-white/10 overflow-hidden relative flex-shrink-0 shadow-sm">
                     {teamLogo ? (
                         <Image src={teamLogo} alt="Team Logo" fill className="object-cover" />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-slate-500">Logo</div>
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-slate-500">Logo</div>
                     )}
                 </div>
-                <div>
-                    <h2 className="text-xl font-black text-white tracking-wide uppercase leading-none">
+                <div className="min-w-0 flex-1 flex flex-col justify-center">
+                    <h2 className="text-sm font-black text-white tracking-wide uppercase leading-tight truncate">
                         {player.playerName}
                     </h2>
-                    <p className="text-slate-400 font-bold text-sm mt-0.5">
+                    <p className="text-slate-400 font-bold text-[10px] leading-tight mt-0.5 truncate">
                         {player.playerNumber ? `#${player.playerNumber} • ` : ''}{player.playerPosition || 'Player'}
                     </p>
                 </div>
@@ -69,29 +79,28 @@ export default function PlayerCardWeb({ player, teamLogo, badgeText }: PlayerCar
             </div>
 
             {/* Stats Grid - Neon Outline Style */}
-            <div className="px-3 mt-3 mb-4 grid grid-cols-3 gap-3 z-10">
+            <div className="px-3 mt-3 mb-4 grid grid-cols-3 gap-2 z-10">
                 {/* AVG - Green Neon */}
-                <div className="rounded-xl p-2 flex flex-col items-center justify-center border-2 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.4),inset_0_0_15px_rgba(16,185,129,0.15)] bg-emerald-500/10 backdrop-blur-sm group-hover:scale-105 transition-transform duration-300">
-                    <span className="text-lg sm:text-2xl font-black text-white leading-none drop-shadow-[0_0_5px_rgba(16,185,129,0.8)]">{player.avg || '.000'}</span>
-                    <span className="text-[10px] font-bold text-emerald-400 tracking-widest mt-1 drop-shadow-[0_0_2px_rgba(16,185,129,0.8)]">AVG</span>
+                <div className="rounded-lg p-1.5 flex flex-col items-center justify-center border border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3),inset_0_0_10px_rgba(16,185,129,0.1)] bg-emerald-500/10 backdrop-blur-sm group-hover:scale-105 transition-transform duration-300">
+                    <span className="text-sm font-black text-white leading-none drop-shadow-[0_0_5px_rgba(16,185,129,0.8)]">{displayAvg}</span>
+                    <span className="text-[8px] font-bold text-emerald-400 tracking-widest mt-0.5 opacity-80">AVG</span>
                 </div>
 
                 {/* HITS - Orange Neon w/ Fire */}
-                <div className="rounded-xl p-2 flex flex-col items-center justify-center border-2 border-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.4),inset_0_0_15px_rgba(249,115,22,0.15)] bg-orange-500/10 backdrop-blur-sm group-hover:scale-105 transition-transform duration-300 relative">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-900 px-1 border-t-0 border-l-0 border-r-0 border-b-0 rounded-full">
-                        <FaFire className="text-orange-500 text-sm animate-pulse drop-shadow-[0_0_5px_rgba(249,115,22,0.8)]" />
+                <div className="rounded-lg p-1.5 flex flex-col items-center justify-center border border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.3),inset_0_0_10px_rgba(249,115,22,0.1)] bg-orange-500/10 backdrop-blur-sm group-hover:scale-105 transition-transform duration-300 relative">
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-slate-900 px-1 rounded-full">
+                        <FaFire className="text-orange-500 text-[10px] animate-pulse" />
                     </div>
-                    <span className="text-lg sm:text-2xl font-black text-white leading-none drop-shadow-[0_0_5px_rgba(249,115,22,0.8)]">{player.hits || '0'}</span>
-                    <span className="text-[10px] font-bold text-orange-400 tracking-widest mt-1 drop-shadow-[0_0_2px_rgba(249,115,22,0.8)]">HITS</span>
+                    <span className="text-sm font-black text-white leading-none drop-shadow-[0_0_5px_rgba(249,115,22,0.8)]">{displayHits}</span>
+                    <span className="text-[8px] font-bold text-orange-400 tracking-widest mt-0.5 opacity-80">HITS</span>
                 </div>
 
                 {/* OPS - Blue Neon */}
-                <div className="rounded-xl p-2 flex flex-col items-center justify-center border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.4),inset_0_0_15px_rgba(59,130,246,0.15)] bg-blue-500/10 backdrop-blur-sm group-hover:scale-105 transition-transform duration-300">
-                    <span className="text-lg sm:text-2xl font-black text-white leading-none drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]">{player.ops || '.000'}</span>
-                    <span className="text-[10px] font-bold text-blue-400 tracking-widest mt-1 drop-shadow-[0_0_2px_rgba(59,130,246,0.8)]">OPS</span>
+                <div className="rounded-lg p-1.5 flex flex-col items-center justify-center border border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3),inset_0_0_10px_rgba(59,130,246,0.1)] bg-blue-500/10 backdrop-blur-sm group-hover:scale-105 transition-transform duration-300">
+                    <span className="text-sm font-black text-white leading-none drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]">{displayOps}</span>
+                    <span className="text-[8px] font-bold text-blue-400 tracking-widest mt-0.5 opacity-80">OPS</span>
                 </div>
             </div>
-
             {/* Branding Footer - Logo + Text */}
             <div className="flex items-center justify-center gap-2 pb-3 z-10 opacity-80">
                 <div className="w-5 h-5 relative shadow-sm">

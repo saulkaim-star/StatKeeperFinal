@@ -42,7 +42,7 @@ export default function Navbar() {
         return (
             <nav className="bg-slate-900 border-b border-white/10 p-4 sticky top-0 z-50">
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
-                    <Link href="/" className="flex items-center gap-2 text-xl font-black italic tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                    <Link href="/" className="flex items-center gap-2 text-xl font-black italic tracking-wide text-white">
                         <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain rounded-full" />
                         StatKeeper
                     </Link>

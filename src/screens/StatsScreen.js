@@ -1,12 +1,10 @@
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
-import storage from '@react-native-firebase/storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Button, FlatList, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Share from 'react-native-share'; // <--- Importación añadida
+import Share from 'react-native-share';
 import ViewShot from "react-native-view-shot";
 import { handleDeleteAccount } from '../utils/authUtils';
 
@@ -196,7 +194,13 @@ const StatsScreen = ({ route }) => {
         }
 
         let teamNameSubscriber = () => { };
-        if (!initialTeamName) { teamNameSubscriber = firestore().collection('teams').doc(teamId).onSnapshot(doc => { if (doc.exists) { setTeamName(doc.data().teamName || ''); setTeamLogo(doc.data().photoURL || null); } }, error => { console.error("Error fetching team name:", error); }); }
+        // ALWAYS listen to the team doc to get the latest photoURL and name updates
+        teamNameSubscriber = firestore().collection('teams').doc(teamId).onSnapshot(doc => {
+            if (doc.exists) {
+                setTeamName(doc.data().teamName || '');
+                setTeamLogo(doc.data().photoURL || null);
+            }
+        }, error => { console.error("Error fetching team details:", error); });
 
         setLoadingRoster(true);
         const playersSubscriber = firestore().collection('teams').doc(teamId).collection('roster').onSnapshot(querySnapshot => { setPlayersStats(querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }))); setLoadingRoster(false); }, error => { console.error("Error fetching roster:", error); setLoadingRoster(false); });
@@ -482,30 +486,6 @@ const StatsScreen = ({ route }) => {
     // --- FIN useMemo DE RANKING ---
 
 
-    // --- ¡NUEVA FUNCIÓN PARA EL BOTÓN WEB! ---
-    const handleOpenWebDashboard = async () => {
-        if (!competitionInfo.id) {
-            Alert.alert("Error", "Cannot open web dashboard. Team is not in a competition.");
-            return;
-        }
-        const vercelURL = 'https://statkeeper-liga-webbaseball.vercel.app';
-        const webDashboardUrl = `${vercelURL}/liga/${competitionInfo.id}`;
-
-        try {
-            const supported = await Linking.canOpenURL(webDashboardUrl);
-            if (supported) {
-                await Linking.openURL(webDashboardUrl);
-            } else {
-                Alert.alert("Error", `Don't know how to open this URL: ${webDashboardUrl}`);
-            }
-        } catch (err) {
-            console.error("Failed to open web URL:", err);
-            Alert.alert("Error", "Failed to open the link.");
-        }
-    };
-    // --- FIN DE LA NUEVA FUNCIÓN ---
-
-
     // --- Funciones (handleShare, etc.) (RESTAURADA) ---
     const handleShare = async (ref) => {
         try {
@@ -583,6 +563,7 @@ const StatsScreen = ({ route }) => {
         return <View style={styles.centerContainer}><ActivityIndicator size="large" /></View>;
     }
 
+    // --- BUTTON HANDLERS FOR WEB DASHBOARDS ---
     const handleUpdateLogo = () => {
         if (!currentUser) { Alert.alert('Error', 'You must be logged in to update the logo.'); return; }
         launchImageLibrary({ mediaType: 'photo', quality: 0.7 }, async (response) => {
@@ -606,6 +587,28 @@ const StatsScreen = ({ route }) => {
                 }
             }
         });
+    };
+
+    const vercelURL = 'https://team-web-steel.vercel.app';
+
+    const handleOpenLeaguePage = async () => {
+        if (!competitionInfo.id) return;
+        const url = `${vercelURL}/l/${competitionInfo.id}`;
+        try {
+            await Linking.openURL(url);
+        } catch (err) {
+            Alert.alert("Error", "Failed to open league page.");
+        }
+    };
+
+    const handleOpenTeamPage = async () => {
+        if (!teamId) return;
+        const url = `${vercelURL}/t/${teamId}`;
+        try {
+            await Linking.openURL(url);
+        } catch (err) {
+            Alert.alert("Error", "Failed to open team page.");
+        }
     };
 
     // --- Componente de renderizado (¡MODIFICADO!) ---
@@ -647,17 +650,30 @@ const StatsScreen = ({ route }) => {
                                 <Text style={styles.rankText}>League Rank: {teamRank}</Text>
                             )}
 
-                            {/* --- ¡NUEVO BOTÓN AÑADIDO AQUÍ! --- */}
-                            {competitionInfo.id && (
+                            {/* --- BOTONES DE ENLACE WEB --- */}
+                            <View style={{ marginTop: 15 }}>
+                                {/* Botón de Equipo (SIEMPRE VISIBLE) */}
                                 <TouchableOpacity
-                                    style={styles.webButton}
-                                    onPress={handleOpenWebDashboard}
+                                    style={[styles.webButton, { backgroundColor: '#3b82f6', marginBottom: 10 }]}
+                                    onPress={handleOpenTeamPage}
                                 >
                                     <Text style={styles.webButtonText}>
-                                        📊 View Web Dashboard
+                                        ⚾ View Team Dashboard
                                     </Text>
                                 </TouchableOpacity>
-                            )}
+
+                                {/* Botón de Liga (CONDICIONAL) */}
+                                {competitionInfo.id && (
+                                    <TouchableOpacity
+                                        style={[styles.webButton, { backgroundColor: '#10B981' }]} // Verde
+                                        onPress={handleOpenLeaguePage}
+                                    >
+                                        <Text style={styles.webButtonText}>
+                                            🏆 View League Dashboard
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                         </View>
 
                         <View style={styles.card}><Text style={styles.header}>Team Leaders</Text>{processedData.leaders.map(item => <LeaderItem key={item.stat} item={item} />)}</View>

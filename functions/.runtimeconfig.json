@@ -1,0 +1,6 @@
+{
+  "firebase": {
+    "projectId": "baseballapp-v2",
+    "storageBucket": "baseballapp-v2.firebasestorage.app"
+  }
+}

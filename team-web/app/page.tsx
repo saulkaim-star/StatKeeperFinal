@@ -1,5 +1,5 @@
 "use client";
-import PlayerCardWeb from "@/components/PlayerCardWeb";
+import SpotlightReel from "@/components/SpotlightReel";
 import { db } from "@/lib/firebase";
 import { calculateAvg, calculateOPS } from "@/lib/helpers";
 import { collection, getDocs, limit, query } from "firebase/firestore";
@@ -167,7 +167,7 @@ export default function LandingPage() {
         <div className="relative z-10 flex flex-col items-center">
           {/* Real App Logo - Rounded as requested */}
           <div className="w-24 h-24 mb-2 drop-shadow-2xl">
-            <img src="/logo.png" alt="StatKeeper Logo" className="w-full h-full object-contain rounded-3xl" />
+            <img src="/logo.png" alt="StatKeeper Logo" className="w-full h-full object-contain rounded-2xl" />
           </div>
 
           <h1 className="text-4xl md:text-5xl font-black italic tracking-wide text-white drop-shadow-lg mb-1">
@@ -263,46 +263,24 @@ export default function LandingPage() {
                 ))}
               </div>
             </section>
+
+            {/* View Demo Button - Requested 'Below Users' */}
+            <div className="flex justify-center mt-2 pb-4">
+              <a
+                href="https://statkeeperweb.vercel.app/#demo"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-8 py-2 rounded-full border border-slate-600 bg-slate-800/50 text-slate-300 font-semibold hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2 text-sm backdrop-blur-md"
+              >
+                <span>🎥</span>
+                <span>View Demo</span>
+              </a>
+            </div>
           </div>
 
-          {/* Player Spotlight Reel - Moved to Bottom */}
-          {spotlightPlayers.length > 0 && (
-            <section className="w-full overflow-hidden bg-slate-900/30 py-6 border-y border-slate-800/30 mt-4">
-              <div className="container mx-auto px-4 mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-bold text-slate-300 uppercase tracking-widest pl-1">Player Spotlight</h2>
-                <span className="text-[10px] text-slate-600 uppercase tracking-widest hidden md:block">Top Performers</span>
-              </div>
+          {/* Player Spotlight Reel - Refactored */}
+          <SpotlightReel players={spotlightPlayers} />
 
-              <div className="relative w-full flex overflow-x-auto pt-6 pb-6 gap-6 px-4 custom-scrollbar snap-x">
-                {spotlightPlayers.map((player, idx) => (
-                  <div key={player.id} className="min-w-[140px] md:min-w-[160px] snap-center relative group">
-                    {/* Floating MVP Badge - ONLY FOR TOP 3 */}
-                    {idx < 3 && (
-                      <div className="absolute -top-3 -right-2 z-20 rotate-12 group-hover:animate-pulse">
-                        <div className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 text-black font-black text-[9px] px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(234,179,8,0.6)] border border-white ring-1 ring-yellow-400/50 flex items-center gap-1">
-                          <span>👑</span> MVP
-                        </div>
-                      </div>
-                    )}
-                    <PlayerCardWeb
-                      player={{
-                        playerName: player.playerName,
-                        playerPosition: player.playerPosition,
-                        photoURL: player.photoURL,
-                        // Map potential stats if they exist in the player object
-                        avg: player.avg,
-                        hits: player.hits,
-                        ops: player.ops,
-                        playerNumber: player.playerNumber
-                      }}
-                      teamLogo={player.fetchedTeamLogo}
-                      badgeText=""
-                    />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
         </div>
       )}
 

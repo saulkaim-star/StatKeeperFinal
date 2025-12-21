@@ -1,11 +1,13 @@
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import storage from '@react-native-firebase/storage';
 import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Button,
   FlatList,
+  Image,
   Linking,
 
   ScrollView,
@@ -15,6 +17,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { handleDeleteAccount } from '../utils/authUtils';
 
@@ -102,9 +105,9 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
   const { competitionId } = route.params;
   console.log("OrganizerDashboardScreen: Received competitionId prop:", competitionId);
 
-  // --- Constantes para Web (SIN CAMBIOS) ---
-  const vercelURL = 'https://statkeeper-liga-webbaseball.vercel.app';
-  const webDashboardUrl = `${vercelURL}/liga/${competitionId}`;
+  // --- Constantes para Web (ACTUALIZADO) ---
+  const vercelURL = 'https://team-web-steel.vercel.app';
+  const webDashboardUrl = `${vercelURL}/l/${competitionId}`;
 
   // --- Estados (CON UNA ADICIÓN) ---
   const [competition, setCompetition] = useState(null);
@@ -129,6 +132,34 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
       headerRight: () => (<Button onPress={handleLogout} title="Log Out" color="#ef4444" />),
     });
   }, [navigation, competition]);
+
+
+  const handleUpdateLogo = () => {
+    const currentUser = auth().currentUser; // Get current user for path
+    if (!currentUser) return;
+
+    launchImageLibrary({ mediaType: 'photo', quality: 0.7 }, async (response) => {
+      if (response.didCancel) return;
+      if (response.errorCode) { Alert.alert('Error', response.errorMessage); return; }
+      if (response.assets && response.assets.length > 0) {
+        const uploadUri = response.assets[0].uri;
+        let filename = uploadUri.substring(uploadUri.lastIndexOf('/') + 1);
+        const extension = filename.split('.').pop();
+        // CORRECTION: Use 'media_posts/{uid}/...' to pass Firebase Storage Rules
+        const storagePath = `media_posts/${currentUser.uid}/league_logo/${competitionId}_${Date.now()}.${extension}`;
+        try {
+          const storageRef = storage().ref(storagePath);
+          await storageRef.putFile(uploadUri);
+          const url = await storageRef.getDownloadURL();
+          await firestore().collection('competitions').doc(competitionId).update({ logoUrl: url });
+          Alert.alert("Success", "League logo updated!");
+        } catch (e) {
+          console.error("Upload error details:", e);
+          Alert.alert('Error', 'Could not upload image. Check permissions.');
+        }
+      }
+    });
+  };
 
   // --- useEffect (Listeners de Firestore) (SIN CAMBIOS) ... ---
   useEffect(() => {
@@ -308,6 +339,20 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView>
+        {/* --- LOGO MOVED TO TOP --- */}
+        <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 10 }}>
+          <View style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: 'white', justifyContent: 'center', alignItems: 'center', overflow: 'hidden', backgroundColor: '#e5e7eb', elevation: 5 }}>
+            {competition.logoUrl ? (
+              <Image source={{ uri: competition.logoUrl }} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <Text style={{ fontSize: 40 }}>🏆</Text>
+            )}
+          </View>
+          <TouchableOpacity onPress={handleUpdateLogo} style={{ position: 'absolute', bottom: 0, right: '35%', backgroundColor: 'white', padding: 8, borderRadius: 20, elevation: 4 }}>
+            <Text style={{ fontSize: 16 }}>✏️</Text>
+          </TouchableOpacity>
+        </View>
+
         {error && <View style={styles.errorBanner}><Text style={styles.errorBannerText}>{error}</Text></View>}
         {(loadingGames || loadingPendingGames) && !error && competition && (<View style={styles.loadingSection}><ActivityIndicator /><Text style={styles.loadingText}> Loading sections...</Text></View>)}
 
@@ -369,6 +414,7 @@ const OrganizerDashboardScreen = ({ route, navigation }) => {
       {/* 5. Info Card (FIXED FOOTER - Restaurado a su posición original) */}
       {competition && (
         <View style={styles.infoCard}>
+
           {/* 1. Contenedor de Invite Code */}
           <View style={styles.inviteCodeContainer}>
             <Text style={styles.inviteCodeLabel}>Invite Code:</Text>
